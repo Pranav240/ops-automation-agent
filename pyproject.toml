@@ -10,17 +10,20 @@ dependencies = [
     "anthropic>=1.12",
     "langfuse>=4.17",
     "python-dotenv>=1.0",
+    "fastapi>=0.148",
+    "uvicorn>=0.54",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0",
+    "httpx>=0.28",
     "ruff>=0.16",
     "pre-commit>=4.0",
 ]
 
 [tool.setuptools.packages.find]
-include = ["agent*"]
+include = ["agent*", "mock_api*", "evals*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
