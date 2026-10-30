@@ -5,8 +5,7 @@ Agentic automation for inbound business requests. Work in progress (Phase 0).
 ## Setup
 
 ```bash
-uv venv .venv --python 3.13
-uv pip install --python .venv/Scripts/python.exe -e ".[dev]"
+uv sync --locked --extra dev   # installs exact versions from uv.lock into .venv
 cp .env.example .env   # fill in keys
 docker compose up -d   # Postgres + pgvector on port 5433
 .venv/Scripts/pre-commit.exe install
