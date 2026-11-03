@@ -23,3 +23,9 @@
 | 2026-11-03 | Write actions are proposed by the tool agent and executed only in the commit node; one write per request; orders are checked against the requester's email in code | Approval gate and owner checks cannot be skipped by the model |
 | 2026-11-03 | Critic revision continues the tool agent's conversation instead of restarting it | First real run needed 9 of the 10 allowed LLM calls; continuing saves the repeated lookups |
 | 2026-11-03 | Qdrant retrieval variant moves to Phase 3 with the other retrieval ablations | It is only used for the dev-set comparison |
+| 2026-11-03 | Reranker stays `ms-marco-MiniLM-L-6-v2`; L-12, bge-reranker-base and jina were within noise on dev (hit@5 0.78-0.83) | Smallest and fastest of the equal options |
+| 2026-11-03 | A declined model call (`stop_reason: refusal`, empty content) is handled as a refusal in the planner, tool agent, critic and B1 | REQ-125 crashed the run on an empty reply |
+| 2026-11-03 | Planner search query names the policy topics needed instead of repeating the request | Most dev retrieval misses were POL-024 (clarifying questions); agent hit@5 went from 0.83 to 0.97 |
+| 2026-11-03 | B1 output schema uses enums for status and escalation reason | Free-text reasons scored 0/11 on reason accuracy, which measured the schema, not the model |
+| 2026-11-03 | CI eval gate runs on pull requests only: 12 dev rows (2 per category) plus the live regression cases, about $0.04 | Real LLM calls cost money; pushes run lint and unit tests only |
+| 2026-11-03 | Development stopped at f513c0b (stopping rule 1: all targets met on dev at 9c58580 and f513c0b); tagged `agent-frozen-v1` | Preregistered stopping rule; REQ-004 kept as a known flaky regression case instead of tuning further |

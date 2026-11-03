@@ -5,7 +5,7 @@ standard deviation when there are several) and a 95% Wilson interval from the fi
 
 Usage:
   python -m evals.report results/runs/2026-11-03_dev_*.jsonl --out results/2026-11-03_dev
-  python -m evals.report FILES... --compare A-H B1    # paired bootstrap on correct action rate
+  python -m evals.report FILES... --compare A-H@abc B1@abc   # paired bootstrap; repeatable
 """
 
 import argparse
@@ -147,7 +147,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("files", nargs="+", type=Path)
     parser.add_argument("--out", type=Path, help="write OUT.md and OUT.json")
-    parser.add_argument("--compare", nargs=2, metavar=("A", "B"))
+    parser.add_argument("--compare", nargs=2, metavar=("A", "B"), action="append", default=[])
     args = parser.parse_args(argv)
 
     runs = load_runs(args.files)
@@ -156,14 +156,15 @@ def main(argv=None):
         raise SystemExit(f"mixed splits: {splits}")
     rows = load_rows(splits.pop())
     summaries, table = build(runs, rows)
-    if args.compare:
-        table += "\n" + compare(runs, rows, *args.compare)
+    for a, b in args.compare:
+        table += "\n" + compare(runs, rows, a, b)
     print(table)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.with_suffix(".md").write_text(table, encoding="utf-8")
         payload = {"files": [str(p) for p in args.files], "summaries": summaries}
-        args.out.with_suffix(".json").write_text(json.dumps(payload, indent=1), encoding="utf-8")
+        text = json.dumps(payload, indent=1) + "\n"
+        args.out.with_suffix(".json").write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":

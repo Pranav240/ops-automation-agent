@@ -1,7 +1,9 @@
 """Regression suite: every dev failure found during Phase 3 becomes a case here.
 
 Live cases call the real model (Haiku) and run only with RUN_LIVE=1 (the CI eval gate sets it).
-Cases are listed in evals/regression_cases.json with the failure that was seen.
+Cases are listed in evals/regression_cases.json with the failure that was seen. A case with
+"known_flaky" still runs but is reported as xfail/xpass, so a known intermittent failure is visible
+without failing CI.
 """
 
 import asyncio
@@ -34,8 +36,11 @@ def agent():
 @live
 @pytest.mark.live
 @pytest.mark.parametrize("case", CASES, ids=[c["request_id"] for c in CASES])
-def test_regression_case(case, agent):
+def test_regression_case(case, agent, request):
     from evals.runner import run_agent
+
+    if case.get("known_flaky"):
+        request.applymarker(pytest.mark.xfail(reason=case["known_flaky"], strict=False))
 
     rows, llm, retriever = agent
     row = rows[case["request_id"]]

@@ -66,7 +66,7 @@ def main(argv=None):
     if args.out:
         args.out.with_suffix(".md").write_text(table, encoding="utf-8")
         args.out.with_suffix(".json").write_text(
-            json.dumps({**meta, "results": results}, indent=1), encoding="utf-8"
+            json.dumps({**meta, "results": results}, indent=1) + "\n", encoding="utf-8"
         )
 
 

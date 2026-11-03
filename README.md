@@ -1,6 +1,6 @@
 # Ops Automation Agent
 
-Agentic automation for inbound business requests. Work in progress (Phase 2: agent core).
+Agentic automation for inbound business requests. Work in progress (Phase 3: eval harness). Dev results: `results/2026-11-03_dev.md`.
 
 ## Setup
 
