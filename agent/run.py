@@ -64,7 +64,11 @@ def meta(model: str) -> dict:
     commit = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True
     ).stdout.strip()
-    dirty = bool(subprocess.run(["git", "status", "--porcelain"], capture_output=True).stdout)
+    dirty = bool(
+        subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True
+        ).stdout
+    )
     return {"model": model, "date": date.today().isoformat(), "commit": commit, "dirty": dirty}
 
 
@@ -72,6 +76,7 @@ async def main(args) -> None:
     llm = LLMClient.from_env()
     api = MockApi(mock_api_url())
     deps = Deps(llm=llm, retriever=HybridRetriever(db_url()), api=api)
+    run_meta = meta(llm.model)
     async with AsyncPostgresSaver.from_conn_string(db_url()) as saver:
         await saver.setup()
         graph = build_graph(deps, saver)
@@ -89,7 +94,7 @@ async def main(args) -> None:
             print(f"llm calls={spent.calls} cost=${spent.spent_usd:.5f}")
             if args.out:
                 record = {
-                    **meta(llm.model),
+                    **run_meta,
                     "request_id": row["id"],
                     "llm_calls": spent.calls,
                     "cost_usd": round(spent.spent_usd, 6),
