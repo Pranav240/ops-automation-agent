@@ -130,7 +130,7 @@ def export(paths: list[Path], out: Path) -> None:
             row = rows[rec["request_id"]]
             writer.writerow([n, row["request_text"], row["reference_reply"], rec["reply"], ""])
             key.append({"item": n, "request_id": rec["request_id"], "system": rec["system"]})
-    out.with_name("key.json").write_text(json.dumps(key, indent=1), encoding="utf-8")
+    out.with_name("key.json").write_text(json.dumps(key, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {out} ({len(picked)} items). Fill in owner_score (1-5) for every row.")
 
 

@@ -33,11 +33,11 @@ RATE_ROWS = [
 
 
 def load_runs(paths: list[Path]) -> dict[str, list[list[dict]]]:
-    """system label -> list of runs (each a list of records)."""
+    """'system@commit' -> list of runs (each a list of records). Repeats share a commit."""
     runs: dict[str, list[list[dict]]] = defaultdict(list)
     for path in sorted(paths):
         records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-        runs[records[0]["system"]].append(records)
+        runs[f"{records[0]['system']}@{records[0]['commit']}"].append(records)
     return runs
 
 
