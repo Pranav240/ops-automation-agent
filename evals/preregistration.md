@@ -146,3 +146,7 @@ Then the agent configuration is frozen in a tagged git commit before the test se
 | Date | Change | Reason |
 |---|---|---|
 | 2026-11-03 | Added a dev-only retrieval variant: vector search in Qdrant (same embeddings and chunks as pgvector) | Compare vector stores; no agent code or results existed yet; test set untouched |
+| 2026-11-03 | Predicted action made concrete (`evals/metrics.py`): a write action that was executed, attempted or sent to the gate counts; otherwise the system's own structured label is used (B1/B2 action label; agent reply kind: clarification -> ask_clarification, refusal -> refuse, answer -> lookup_order if the expected order was looked up, else refuse). Errors count as neither correct nor wrong. B1 and B2 have no approval gate, so their write decisions count as executed | Section 2 left the question-vs-refusal rule to Phase 3; written before any LLM-system results. One B2 dev run was made while testing the harness before this entry |
+| 2026-11-03 | B2 replies are fixed templates per action | B2 is rule-based; the judge needs text to score |
+| 2026-11-03 | Retrieval hit@5 / MRR@5 reported two ways: on the agent's own query (planner) during runs, and retrieval-only with the raw request text as the query, for every variant including Qdrant | The retrieval-only form gives all variants the same input at no LLM cost |
+| 2026-11-03 | Judge rubric fixed in `evals/judge.py`; judge runs at effort medium; reply quality scored on 30 sampled requests (seed 0) per system | Section 4 left the rubric to Phase 3 |

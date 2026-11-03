@@ -84,79 +84,80 @@ class Store:
         return self.orders[order_id]
 
 
-store = Store()
-app = FastAPI(title="Brightcart mock internal API")
+def create_app() -> FastAPI:
+    """A fresh app with its own in-memory store (the eval runner uses one per request)."""
+    store = Store()
+    app = FastAPI(title="Brightcart mock internal API")
+    app.state.store = store
+
+    @app.get("/health")
+    def health():
+        return {"ok": True}
+
+    @app.post("/reset")
+    def reset():
+        store.reset()
+        return {"ok": True}
+
+    @app.get("/orders/{order_id}")
+    def lookup_order(order_id: str):
+        order = store.order(order_id)
+        store.log("lookup_order", order_id=order_id)
+        return order
+
+    @app.post("/refunds")
+    def refund(req: RefundRequest):
+        order = store.order(req.order_id)
+        amount = round(req.amount, 2)
+        if order["status"] in ("cancelled", "refunded"):
+            raise HTTPException(409, f"order is {order['status']}")
+        refundable = round(order["total"] - order["refunded_amount"], 2)
+        if amount > refundable:
+            raise HTTPException(409, f"amount {amount:.2f} exceeds refundable {refundable:.2f}")
+        if amount > APPROVAL_THRESHOLD and not req.approved_by:
+            raise HTTPException(403, f"refunds over {APPROVAL_THRESHOLD:.2f} need human approval")
+        order["refunded_amount"] = round(order["refunded_amount"] + amount, 2)
+        if order["refunded_amount"] == order["total"]:
+            order["status"] = "refunded"
+        return store.log(
+            "refund",
+            order_id=req.order_id,
+            amount=amount,
+            reason=req.reason,
+            approved_by=req.approved_by,
+        )
+
+    @app.post("/orders/{order_id}/status")
+    def change_status(order_id: str, req: StatusChange):
+        order = store.order(order_id)
+        allowed = TRANSITIONS.get(order["status"], set())
+        if req.status not in allowed:
+            raise HTTPException(409, f"cannot change status from {order['status']} to {req.status}")
+        previous = order["status"]
+        order["status"] = req.status
+        if req.status == "cancelled":
+            order["refunded_amount"] = order["total"]
+        return store.log("change_status", order_id=order_id, previous=previous, status=req.status)
+
+    @app.post("/escalations")
+    def escalate(req: EscalationRequest):
+        if req.order_id:
+            store.order(req.order_id)
+        return store.log("escalate", order_id=req.order_id, reason=req.reason, summary=req.summary)
+
+    @app.post("/tickets/{ticket_id}/close")
+    def close_ticket(ticket_id: str, req: CloseRequest):
+        if ticket_id in store.closed_tickets:
+            raise HTTPException(409, f"ticket {ticket_id} already closed")
+        store.closed_tickets.add(ticket_id)
+        return store.log("close", ticket_id=ticket_id, resolution=req.resolution)
+
+    @app.get("/actions")
+    def actions():
+        return store.actions
+
+    return app
 
 
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-
-@app.post("/reset")
-def reset():
-    store.reset()
-    return {"ok": True}
-
-
-@app.get("/orders/{order_id}")
-def lookup_order(order_id: str):
-    order = store.order(order_id)
-    store.log("lookup_order", order_id=order_id)
-    return order
-
-
-@app.post("/refunds")
-def refund(req: RefundRequest):
-    order = store.order(req.order_id)
-    amount = round(req.amount, 2)
-    if order["status"] in ("cancelled", "refunded"):
-        raise HTTPException(409, f"order is {order['status']}")
-    refundable = round(order["total"] - order["refunded_amount"], 2)
-    if amount > refundable:
-        raise HTTPException(409, f"amount {amount:.2f} exceeds refundable {refundable:.2f}")
-    if amount > APPROVAL_THRESHOLD and not req.approved_by:
-        raise HTTPException(403, f"refunds over {APPROVAL_THRESHOLD:.2f} need human approval")
-    order["refunded_amount"] = round(order["refunded_amount"] + amount, 2)
-    if order["refunded_amount"] == order["total"]:
-        order["status"] = "refunded"
-    return store.log(
-        "refund",
-        order_id=req.order_id,
-        amount=amount,
-        reason=req.reason,
-        approved_by=req.approved_by,
-    )
-
-
-@app.post("/orders/{order_id}/status")
-def change_status(order_id: str, req: StatusChange):
-    order = store.order(order_id)
-    allowed = TRANSITIONS.get(order["status"], set())
-    if req.status not in allowed:
-        raise HTTPException(409, f"cannot change status from {order['status']} to {req.status}")
-    previous = order["status"]
-    order["status"] = req.status
-    if req.status == "cancelled":
-        order["refunded_amount"] = order["total"]
-    return store.log("change_status", order_id=order_id, previous=previous, status=req.status)
-
-
-@app.post("/escalations")
-def escalate(req: EscalationRequest):
-    if req.order_id:
-        store.order(req.order_id)
-    return store.log("escalate", order_id=req.order_id, reason=req.reason, summary=req.summary)
-
-
-@app.post("/tickets/{ticket_id}/close")
-def close_ticket(ticket_id: str, req: CloseRequest):
-    if ticket_id in store.closed_tickets:
-        raise HTTPException(409, f"ticket {ticket_id} already closed")
-    store.closed_tickets.add(ticket_id)
-    return store.log("close", ticket_id=ticket_id, resolution=req.resolution)
-
-
-@app.get("/actions")
-def actions():
-    return store.actions
+app = create_app()
+store = app.state.store

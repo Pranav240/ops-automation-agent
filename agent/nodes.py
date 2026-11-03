@@ -296,6 +296,9 @@ def after_critic(state: State) -> str:
 # ---------------------------------------------------------------- approval gate
 
 
+NO_CRITIC = {"ok": True, "issues": []}  # used when the graph is built without the critic
+
+
 def approval_reasons(state: State) -> list[str]:
     proposal = state["proposal"]
     reasons = []
@@ -303,7 +306,7 @@ def approval_reasons(state: State) -> list[str]:
         reasons.append(f"refund over ${APPROVAL_THRESHOLD:.0f}")
     if proposal.get("confidence", 0) < CONFIDENCE_THRESHOLD:
         reasons.append(f"confidence {proposal.get('confidence')} below {CONFIDENCE_THRESHOLD}")
-    if not state["critique"]["ok"]:
+    if not state.get("critique", NO_CRITIC)["ok"]:
         reasons.append("critic still found problems after one revision")
     return reasons
 
@@ -326,7 +329,7 @@ async def approval_gate(state: State, deps: Deps) -> dict:
             "args": proposal["args"],
             "reply": proposal["reply"],
             "reasons": reasons,
-            "critique": state["critique"],
+            "critique": state.get("critique", NO_CRITIC),
         }
     )
     decision = answer.get("decision")
@@ -352,7 +355,7 @@ async def commit(state: State, deps: Deps) -> dict:
         "confidence": proposal["confidence"],
         "retrieved": [d["doc_id"] for d in state["docs"]],
         "looked_up": sorted(state["orders"]),
-        "critique": state["critique"],
+        "critique": state.get("critique", NO_CRITIC),
         "revisions": state.get("revisions", 0),
         "sent_to_approval": approval["decision"] in ("approve", "reject", "edit"),
         "approval": approval,

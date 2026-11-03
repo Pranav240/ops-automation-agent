@@ -5,6 +5,7 @@ action JSON. No retrieval, no tools, no critic.
 B2 rule_router: keyword and regex rules, no LLM.
 
 Both return a decision dict {action, args, reply}; nothing is executed here.
+B2 replies are fixed templates per action.
 """
 
 import json
@@ -126,8 +127,21 @@ LOST = re.compile(r"never (arrived|came)|lost|not (arrived|delivered)", re.I)
 STATUS = re.compile(r"where is|status|track|when will|has it shipped", re.I)
 
 
+# Fixed reply per action, so B2's replies can be judged like the others.
+B2_REPLIES = {
+    "refund": "Refunded ${amount:.2f} for order {order_id} to your original payment method.",
+    "change_status": "Order {order_id} is now {status}.",
+    "lookup_order": "Here is the latest information on order {order_id}.",
+    "escalate": "We have passed your request to a specialist team, who will contact you.",
+    "close": "We have closed this ticket. Thanks for letting us know.",
+    "ask_clarification": "Could you share your order ID and tell us what you need help with?",
+    "refuse": "Sorry, we can't help with that request.",
+}
+
+
 def decide(action: str, args: dict | None = None) -> dict:
-    return {"action": action, "args": args or {}, "reply": ""}
+    args = args or {}
+    return {"action": action, "args": args, "reply": B2_REPLIES[action].format(**args)}
 
 
 def rule_router(request: dict, order: dict | None) -> dict:
