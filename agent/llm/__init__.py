@@ -1,6 +1,6 @@
 from agent.llm.budget import Budget, BudgetExceeded
 from agent.llm.client import LLMClient, LLMResponse, LLMRun
-from agent.llm.providers import AnthropicProvider, FakeProvider
+from agent.llm.providers import AnthropicProvider, FakeProvider, ToolCall
 
 __all__ = [
     "AnthropicProvider",
@@ -10,4 +10,5 @@ __all__ = [
     "LLMClient",
     "LLMResponse",
     "LLMRun",
+    "ToolCall",
 ]

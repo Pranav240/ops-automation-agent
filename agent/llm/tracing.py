@@ -1,35 +1,62 @@
-"""Cost and call logging. LangfuseTracer sends each call as a generation; NullTracer drops it."""
+"""Tracing. An observation is started before the work and ended after it, so latency is real.
+
+LangfuseTracer puts everything with the same run_id in one Langfuse trace; NullTracer drops it.
+"""
 
 from typing import Any, Protocol
 
 
-class Tracer(Protocol):
-    def log_call(
+class Observation(Protocol):
+    def end(
         self,
-        run_id: str,
-        name: str,
-        model: str,
-        input: Any,
-        output: str | None,
-        input_tokens: int,
-        output_tokens: int,
-        cost_usd: float,
+        output: Any = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        cost_usd: float | None = None,
         error: str | None = None,
     ) -> None: ...
+
+
+class Tracer(Protocol):
+    def start(
+        self, run_id: str, name: str, input: Any, model: str | None = None
+    ) -> Observation: ...
 
     def flush(self) -> None: ...
 
 
-class NullTracer:
-    def log_call(self, *args, **kwargs) -> None:
+class NullObservation:
+    def end(self, *args, **kwargs) -> None:
         pass
+
+
+class NullTracer:
+    def start(self, run_id, name, input, model=None) -> Observation:
+        return NullObservation()
 
     def flush(self) -> None:
         pass
 
 
+class LangfuseObservation:
+    def __init__(self, observation):
+        self.observation = observation
+
+    def end(self, output=None, input_tokens=None, output_tokens=None, cost_usd=None, error=None):
+        update: dict[str, Any] = {"output": output}
+        if input_tokens is not None:
+            update["usage_details"] = {"input": input_tokens, "output": output_tokens or 0}
+        if cost_usd is not None:
+            update["cost_details"] = {"total": cost_usd}
+        if error:
+            update["level"] = "WARNING"
+            update["status_message"] = error
+        self.observation.update(**update)
+        self.observation.end()
+
+
 class LangfuseTracer:
-    """All calls with the same run_id land in one Langfuse trace."""
+    """A call with a model is a generation; anything else (a graph node) is a span."""
 
     def __init__(self):
         from langfuse import Langfuse
@@ -43,32 +70,16 @@ class LangfuseTracer:
     def trace_url(self, run_id: str) -> str | None:
         return self.langfuse.get_trace_url(trace_id=self.trace_id(run_id))
 
-    def log_call(
-        self,
-        run_id,
-        name,
-        model,
-        input,
-        output,
-        input_tokens,
-        output_tokens,
-        cost_usd,
-        error=None,
-    ):
-        generation = self.langfuse.start_observation(
+    def start(self, run_id, name, input, model=None):
+        observation = self.langfuse.start_observation(
             trace_context={"trace_id": self.trace_id(run_id)},
             name=name,
-            as_type="generation",
+            as_type="generation" if model else "span",
             model=model,
             input=input,
-            output=output,
-            usage_details={"input": input_tokens, "output": output_tokens},
-            cost_details={"total": cost_usd},
             metadata={"run_id": run_id},
-            level="WARNING" if error else "DEFAULT",
-            status_message=error,
         )
-        generation.end()
+        return LangfuseObservation(observation)
 
     def flush(self):
         self.langfuse.flush()
