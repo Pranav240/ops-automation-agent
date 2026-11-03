@@ -4,10 +4,12 @@ Rubric fixed on 2026-11-03, before any reply was scored. The judge never scores 
 by its own model (A-S replies are scored by the owner instead).
 
 Steps:
-  1. export:   python -m evals.judge export RUN_FILES... --out evals/judge_validation/labels.csv
+  1. export:   python -m evals.judge export RUN_FILES...
+               --out evals/judge_validation/roundN/labels.csv
+               [--seed N --exclude evals/judge_validation/round1/key.json]
                30 dev replies, mixed systems, shuffled; the system is not shown.
   2. owner fills the owner_score column (1-5) without seeing judge scores.
-  3. validate: python -m evals.judge validate evals/judge_validation/labels.csv
+  3. validate: python -m evals.judge validate evals/judge_validation/roundN/labels.csv
                judge scores the same 30, report agreement and quadratic weighted kappa.
                The judge is used only if kappa >= 0.6 (preregistration section 4).
   4. score:    python -m evals.judge score RUN_FILES...
@@ -117,10 +119,19 @@ def quadratic_kappa(a: list[int], b: list[int], categories=(1, 2, 3, 4, 5)) -> f
 # ---------------------------------------------------------------- commands
 
 
-def export(paths: list[Path], out: Path) -> None:
-    records = [r for r in read_records(paths) if r["split"] == "dev" and r["status"] != "error"]
+def export(paths: list[Path], out: Path, seed: int = SEED, exclude: Path | None = None) -> None:
+    seen = set()
+    if exclude:
+        seen = {(k["request_id"], k["system"]) for k in json.loads(exclude.read_text("utf-8"))}
+    records = [
+        r
+        for r in read_records(paths)
+        if r["split"] == "dev"
+        and r["status"] != "error"
+        and (r["request_id"], r["system"]) not in seen
+    ]
     rows = load_rows("dev")
-    picked = random.Random(SEED).sample(records, SAMPLE_SIZE)
+    picked = random.Random(seed).sample(records, SAMPLE_SIZE)
     out.parent.mkdir(parents=True, exist_ok=True)
     key = []
     with out.open("w", newline="", encoding="utf-8") as f:
@@ -161,8 +172,8 @@ async def validate(labels: Path) -> None:
             for i, o, j in zip(items, owner, judged, strict=True)
         ],
     }
-    path = RESULTS / f"{meta['date']}_judge_validation.json"
-    path.write_text(json.dumps(result, indent=1), encoding="utf-8")
+    path = RESULTS / f"{meta['date']}_judge_validation_{labels.parent.name}.json"
+    path.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     llm.tracer.flush()
     print(
         f"n={len(items)} exact={exact:.2f} within1={within1:.2f} kappa={kappa:.2f} "
@@ -201,7 +212,7 @@ async def score(paths: list[Path]) -> None:
             "cost_usd": sum(j["cost_usd"] for j in judged),
             "items": [{"request_id": i, **j} for i, j in zip(ids, judged, strict=True)],
         }
-        out.write_text(json.dumps(payload, indent=1), encoding="utf-8")
+        out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
         print(f"{system}: mean {statistics.mean(scores):.2f} over {len(scores)} -> {out.name}")
     llm.tracer.flush()
 
@@ -212,14 +223,16 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("export")
     p.add_argument("files", nargs="+", type=Path)
-    p.add_argument("--out", type=Path, default=Path("evals/judge_validation/labels.csv"))
+    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--seed", type=int, default=SEED)
+    p.add_argument("--exclude", type=Path, help="key.json of an earlier round to leave out")
     p = sub.add_parser("validate")
     p.add_argument("labels", type=Path)
     p = sub.add_parser("score")
     p.add_argument("files", nargs="+", type=Path)
     args = parser.parse_args(argv)
     if args.command == "export":
-        export(args.files, args.out)
+        export(args.files, args.out, args.seed, args.exclude)
     elif args.command == "validate":
         asyncio.run(validate(args.labels))
     else:
