@@ -17,3 +17,9 @@
 | 2026-11-03 | Async Python for API endpoints, workers and tool calls (Phases 2, 5, 6) | Workers wait on LLM and HTTP calls; free |
 | 2026-11-03 | Phase 7 dashboard in React + TypeScript | Type safety; free |
 | 2026-11-03 | Add Qdrant (Docker) as an extra retrieval variant, dev set only; pgvector stays the main store | Compare vector stores; free |
+| 2026-11-03 | Embeddings `BAAI/bge-small-en-v1.5` and reranker `Xenova/ms-marco-MiniLM-L-6-v2`, both local via fastembed (ONNX, CPU) | Free, small (~70-80 MB each), no extra API or service |
+| 2026-11-03 | LlamaIndex used for ingestion (loading, splitting, embedding); search SQL, RRF and reranking are our own code | Keeps each retrieval variant explicit for the Phase 3 ablations |
+| 2026-11-03 | No forced `tool_choice`; JSON comes from structured outputs (`output_config.format`) and tools are `strict` | Sonnet 5.5 rejects forced tool use, and A-S must run the same code as A-H |
+| 2026-11-03 | Write actions are proposed by the tool agent and executed only in the commit node; one write per request; orders are checked against the requester's email in code | Approval gate and owner checks cannot be skipped by the model |
+| 2026-11-03 | Critic revision continues the tool agent's conversation instead of restarting it | First real run needed 9 of the 10 allowed LLM calls; continuing saves the repeated lookups |
+| 2026-11-03 | Qdrant retrieval variant moves to Phase 3 with the other retrieval ablations | It is only used for the dev-set comparison |

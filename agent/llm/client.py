@@ -1,12 +1,13 @@
 """The one entry point for LLM calls. Every call is budget-checked, then logged with its cost."""
 
+import json
 import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from agent.llm.budget import Budget, BudgetExceeded, estimate_tokens
 from agent.llm.pricing import cost_usd
-from agent.llm.providers import AnthropicProvider, Provider
+from agent.llm.providers import AnthropicProvider, Provider, ToolCall
 from agent.llm.tracing import LangfuseTracer, NullTracer, Tracer
 
 
@@ -18,6 +19,22 @@ class LLMResponse:
     output_tokens: int
     cost_usd: float
     stop_reason: str
+    content: list[dict] = field(default_factory=list)
+    tool_calls: list[ToolCall] = field(default_factory=list)
+
+
+def prompt_text(system: str, messages: list[dict], tools: list[dict] | None) -> str:
+    """Text used to estimate input tokens. Thinking blocks are skipped (long opaque signatures)."""
+    parts = [system, json.dumps(tools or [])]
+    for message in messages:
+        content = message.get("content", "")
+        if isinstance(content, str):
+            parts.append(content)
+            continue
+        for block in content:
+            if block.get("type") not in ("thinking", "redacted_thinking"):
+                parts.append(json.dumps(block, default=str))
+    return "".join(parts)
 
 
 class LLMRun:
@@ -30,43 +47,44 @@ class LLMRun:
         self.budget = budget
         self.run_id = run_id
 
-    def complete(
+    async def complete(
         self,
         messages: list[dict],
         system: str = "",
         max_tokens: int = 1024,
         name: str = "llm_call",
         model: str | None = None,
+        tools: list[dict] | None = None,
+        output_schema: dict | None = None,
+        effort: str | None = None,
     ) -> LLMResponse:
         model = model or self.model
-        prompt_text = system + "".join(str(m.get("content", "")) for m in messages)
-        trace_input = {"system": system, "messages": messages}
+        observation = self.tracer.start(
+            self.run_id, name, {"system": system, "messages": messages}, model=model
+        )
         try:
-            self.budget.check(model, estimate_tokens(prompt_text), max_tokens)
-        except BudgetExceeded as e:
-            self.tracer.log_call(
-                self.run_id, name, model, trace_input, None, 0, 0, 0.0, error=f"refused: {e}"
+            self.budget.check(
+                model, estimate_tokens(prompt_text(system, messages, tools)), max_tokens
             )
+        except BudgetExceeded as e:
+            observation.end(error=f"refused: {e}")
             raise
 
         try:
-            result = self.provider.call(model, system, messages, max_tokens)
-        except Exception as e:
-            self.tracer.log_call(
-                self.run_id, name, model, trace_input, None, 0, 0, 0.0, error=f"failed: {e}"
+            result = await self.provider.call(
+                model, system, messages, max_tokens, tools, output_schema, effort
             )
+        except Exception as e:
+            observation.end(error=f"failed: {e}")
             raise
         cost = cost_usd(model, result.input_tokens, result.output_tokens)
         self.budget.record(cost)
-        self.tracer.log_call(
-            self.run_id,
-            name,
-            model,
-            trace_input,
-            result.text,
-            result.input_tokens,
-            result.output_tokens,
-            cost,
+        observation.end(
+            output=result.content or result.text,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            cost_usd=cost,
+            error=None if result.stop_reason != "max_tokens" else "stopped at max_tokens",
         )
         return LLMResponse(
             text=result.text,
@@ -75,6 +93,8 @@ class LLMRun:
             output_tokens=result.output_tokens,
             cost_usd=cost,
             stop_reason=result.stop_reason,
+            content=result.content,
+            tool_calls=result.tool_calls,
         )
 
 

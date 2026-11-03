@@ -12,6 +12,14 @@ dependencies = [
     "python-dotenv>=1.0",
     "fastapi>=0.148",
     "uvicorn>=0.54",
+    "langgraph>=1.2.19",
+    "langgraph-checkpoint-postgres>=3.2.0",
+    "psycopg[binary]>=3.3.7",
+    "pgvector>=0.5.1",
+    "llama-index-core>=0.14.25",
+    "llama-index-embeddings-fastembed>=0.7.0",
+    "fastembed>=0.9.1",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
@@ -23,7 +31,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["agent*", "mock_api*", "evals*"]
+include = ["agent*", "mock_api*", "evals*", "retrieval*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

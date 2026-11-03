@@ -3,6 +3,8 @@
 Usage: .venv/Scripts/python.exe scripts/smoke_llm.py
 """
 
+import asyncio
+
 from dotenv import load_dotenv
 
 from agent.llm import BudgetExceeded, LLMClient
@@ -12,26 +14,31 @@ load_dotenv()
 
 client = LLMClient.from_env()
 run = client.start_run()
-print(f"run_id={run.run_id} model={run.model} tracer={type(client.tracer).__name__}")
 
-response = run.complete(
-    [{"role": "user", "content": "Reply with exactly: pong"}], max_tokens=200, name="smoke_ok"
-)
-print(
-    f"reply={response.text!r} in={response.input_tokens} out={response.output_tokens} "
-    f"cost=${response.cost_usd:.6f}"
-)
 
-try:
-    run.complete(
-        [{"role": "user", "content": "This should never be sent"}],
-        max_tokens=client.max_tokens_per_request + 1,
-        name="smoke_over_cap",
+async def main():
+    print(f"run_id={run.run_id} model={run.model} tracer={type(client.tracer).__name__}")
+
+    response = await run.complete(
+        [{"role": "user", "content": "Reply with exactly: pong"}], max_tokens=200, name="smoke_ok"
     )
-    print("ERROR: over-cap call was not refused")
-except BudgetExceeded as e:
-    print(f"refused as expected: {e}")
+    print(
+        f"reply={response.text!r} in={response.input_tokens} out={response.output_tokens} "
+        f"cost=${response.cost_usd:.6f}"
+    )
 
+    try:
+        await run.complete(
+            [{"role": "user", "content": "This should never be sent"}],
+            max_tokens=client.max_tokens_per_request + 1,
+            name="smoke_over_cap",
+        )
+        print("ERROR: over-cap call was not refused")
+    except BudgetExceeded as e:
+        print(f"refused as expected: {e}")
+
+
+asyncio.run(main())
 client.tracer.flush()
 if isinstance(client.tracer, LangfuseTracer):
     print(f"trace: {client.tracer.trace_url(run.run_id)}")

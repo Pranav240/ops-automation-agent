@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from agent.llm import Budget, BudgetExceeded, FakeProvider, LLMClient
@@ -6,21 +8,29 @@ from agent.llm.tracing import NullTracer
 
 
 class RecordingTracer(NullTracer):
+    """Records each ended observation as one dict."""
+
     def __init__(self):
         self.calls = []
 
-    def log_call(
-        self, run_id, name, model, input, output, input_tokens, output_tokens, cost_usd, error=None
-    ):
-        self.calls.append(
-            {
-                "run_id": run_id,
-                "model": model,
-                "output": output,
-                "cost_usd": cost_usd,
-                "error": error,
-            }
-        )
+    def start(self, run_id, name, input, model=None):
+        tracer = self
+
+        class Recorder:
+            def end(
+                self, output=None, input_tokens=None, output_tokens=None, cost_usd=None, error=None
+            ):
+                tracer.calls.append(
+                    {
+                        "run_id": run_id,
+                        "model": model,
+                        "output": output,
+                        "cost_usd": cost_usd,
+                        "error": error,
+                    }
+                )
+
+        return Recorder()
 
 
 def make_client(replies, tracer=None, **limits):
@@ -35,7 +45,7 @@ def make_client(replies, tracer=None, **limits):
 
 
 def ask(run, text="hi", max_tokens=100):
-    return run.complete([{"role": "user", "content": text}], max_tokens=max_tokens)
+    return asyncio.run(run.complete([{"role": "user", "content": text}], max_tokens=max_tokens))
 
 
 def test_cost_uses_model_price():
@@ -58,7 +68,7 @@ def test_call_returns_text_and_logs_cost():
         {
             "run_id": "run-1",
             "model": "claude-haiku-5-5",
-            "output": "hello",
+            "output": [{"type": "text", "text": "hello"}],
             "cost_usd": response.cost_usd,
             "error": None,
         }
@@ -74,6 +84,7 @@ def test_request_over_token_cap_is_refused_before_calling_provider():
         ask(run, max_tokens=600)
     assert client.provider.calls == []
     assert tracer.calls[0]["error"].startswith("refused")
+    assert tracer.calls[0]["cost_usd"] is None
 
 
 def test_run_over_spend_cap_is_refused():
@@ -123,3 +134,22 @@ def test_from_env_without_langfuse_keys_uses_null_tracer(monkeypatch):
     client = LLMClient.from_env(provider=FakeProvider(replies=[]))
     assert isinstance(client.tracer, NullTracer)
     assert client.max_spend_per_run_usd == 0.02
+
+
+def test_tool_call_is_returned_and_thinking_is_not_counted():
+    client = make_client([{"tool": "lookup_order", "input": {"order_id": "ORD-1001"}}])
+    run = client.start_run()
+    history = [
+        {"role": "user", "content": "hi"},
+        {
+            "role": "assistant",
+            "content": [{"type": "thinking", "thinking": "", "signature": "x" * 9000}],
+        },
+        {"role": "user", "content": "go on"},
+    ]
+    tools = [{"name": "lookup_order", "input_schema": {"type": "object"}}]
+    response = asyncio.run(run.complete(history, tools=tools, max_tokens=100))
+    assert response.stop_reason == "tool_use"
+    assert response.tool_calls[0].name == "lookup_order"
+    assert response.tool_calls[0].input == {"order_id": "ORD-1001"}
+    assert client.provider.calls[0]["tools"] == tools
