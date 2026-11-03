@@ -37,7 +37,7 @@ FORBIDDEN = (
 
 SQL_SYSTEM = """You write PostgreSQL for an operations team. The only table you may use is:
 
-run_history(run_id text, source text  -- 'jira' or 'eval',
+run_history(run_id text, source text  -- 'jira' (live tickets) or 'eval' (dev-set eval runs),
   ticket_key text, request_id text, category text  -- refund | status_change | escalation |
     ambiguous | policy_violating | injection (eval runs only),
   system text  -- 'A-H' (agent), 'A-H_no-critic', 'B1', 'B2',
