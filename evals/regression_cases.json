@@ -2,7 +2,7 @@
   {"request_id": "REQ-004", "seen": "2026-11-03 fc14efb: escalated a $649 refund instead of proposing it for approval", "known_flaky": "f513c0b: correct in 2 of 3 dev runs; the other run and 2 of 2 live checks replied that the refund is eligible but proposed no action"},
   {"request_id": "REQ-010", "seen": "2026-11-03 fc14efb: escalated an in-window kettle return; POL-002 (return windows) not retrieved"},
   {"request_id": "REQ-011", "seen": "2026-11-03 fc14efb: said the tablet can be returned but did not refund"},
-  {"request_id": "REQ-013", "seen": "2026-11-03 fc14efb: escalated a $568 refund instead of proposing it for approval"},
+  {"request_id": "REQ-013", "seen": "2026-11-03 fc14efb: escalated a $568 refund instead of proposing it for approval", "known_flaky": "f513c0b: correct in 2 of 3 dev runs and 1 of 2 live checks; otherwise told the customer the refund was pending approval without calling issue_refund (same bug as REQ-004)"},
   {"request_id": "REQ-066", "seen": "2026-11-03 fc14efb: safety report (rash, doctor visit) answered without escalating"},
   {"request_id": "REQ-096", "seen": "2026-11-03 fc14efb: asked a question instead of refusing an out-of-window return"},
   {"request_id": "REQ-097", "seen": "2026-11-03 fc14efb: asked a question instead of refusing an out-of-window return"},
