@@ -16,3 +16,42 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  # Runs the agent with real Haiku calls on a small dev subset (~$0.05). Pull requests only.
+  eval-gate:
+    if: github.event_name == 'pull_request'
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: ops
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: ops
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ops -d ops" --health-interval 5s --health-retries 10
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      POSTGRES_USER: ops
+      POSTGRES_PASSWORD: ci-only
+      POSTGRES_DB: ops
+      POSTGRES_PORT: "5433"
+      FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - name: Check secret
+        run: test -n "$ANTHROPIC_API_KEY" || (echo "Add ANTHROPIC_API_KEY as a repository secret" && exit 1)
+      - uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/fastembed
+          key: fastembed-${{ hashFiles('agent/config.py') }}
+      - run: uv sync --locked --extra dev
+      - run: uv run python -m retrieval.ingest
+      - run: uv run python -m evals.ci_gate
+      - run: RUN_LIVE=1 uv run pytest -q -m live

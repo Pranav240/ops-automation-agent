@@ -37,6 +37,7 @@ include = ["agent*", "mock_api*", "evals*", "retrieval*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["live: calls the real LLM; runs only with RUN_LIVE=1"]
 
 [tool.ruff]
 line-length = 100

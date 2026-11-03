@@ -303,3 +303,22 @@ def test_graph_without_critic_skips_review():
     out = run_graph(deps, critic=False)
     assert out["status"] == "done" and out["executed"]
     assert len(deps.llm.provider.calls) == 4
+
+
+DECLINED = {"refusal": True}
+
+
+def test_declined_calls_end_in_a_refusal_without_actions():
+    deps = make_deps([DECLINED, DECLINED, DECLINED])
+    out = run_graph(deps)
+    assert out["status"] == "done" and out["action"] is None
+    assert out["kind"] == "refusal" and out["reply"] == nodes.DECLINED_REPLY
+    assert deps.retriever.queries == [request()["request_text"]]
+    assert written_actions() == []
+
+
+def test_declined_review_of_a_write_goes_to_human():
+    deps = make_deps([refund("ORD-1001", 65.0), final(), DECLINED])
+    update = asyncio.run(nodes.tool_agent(state(), deps))
+    review_update = asyncio.run(nodes.critic(state(**update), deps))
+    assert review_update["critique"]["ok"] is False

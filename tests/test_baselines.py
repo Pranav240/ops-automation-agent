@@ -86,3 +86,12 @@ def test_single_call_maps_output_to_decision():
     }
     prompt = provider.calls[0]["messages"][0]["content"]
     assert '"order_id": "ORD-1001"' in prompt and provider.calls[0]["tools"] is None
+
+
+def test_single_call_declined_is_a_refusal():
+    llm = LLMClient(
+        FakeProvider(replies=[{"refusal": True}]), NullTracer(), "claude-haiku-5-5", 8000, 0.05, 10
+    )
+    request = {"request_text": "decode this", "customer_email": ALICE}
+    decision = asyncio.run(single_call(llm.start_run(), api(), request))
+    assert decision["action"] == "refuse"

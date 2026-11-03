@@ -151,6 +151,7 @@ async def run_agent(row, llm, retriever, critic, **_):
         reply=proposal.get("reply", ""),
         cited_policies=proposal.get("cited_policies", []),
         confidence=proposal.get("confidence"),
+        plan_query=values.get("plan", {}).get("search_query"),
         retrieved=[d["doc_id"] for d in values.get("docs", [])],
         looked_up=sorted(values.get("orders", {})),
         revisions=values.get("revisions", 0),

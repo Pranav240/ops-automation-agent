@@ -32,6 +32,20 @@ uv run python scripts/smoke_llm.py   # one real Haiku call + one refused call
 uv run python -m evals.validate_dataset
 ```
 
+## Evaluation (dev split only until Phase 8)
+
+```bash
+uv run python -m evals.runner --systems B2,B1,A-H --split dev          # results/runs/*.jsonl
+uv run python -m evals.runner --systems A-H --no-critic                # ablation
+uv run python -m evals.report results/runs/<files> --out results/<name>   # table with 95% CIs
+uv run python -m evals.retrieval_eval --out results/<name>             # retrieval variants incl. Qdrant
+uv run python -m evals.judge score results/runs/<files>                # Sonnet judge, 30 replies each
+uv run python -m evals.ci_gate                                         # CI gate on a fixed dev subset
+```
+
+Metric definitions are in `evals/metrics.py` and `evals/preregistration.md`. Qdrant (for the
+retrieval comparison only): `docker compose up -d`, then `uv run python -m retrieval.qdrant_store`.
+
 ## How it works
 
 - `agent/graph.py`: LangGraph graph `planner -> retriever -> tool_agent -> critic -> approval_gate -> commit`, with a Postgres checkpointer so a paused run can be resumed from another process.
