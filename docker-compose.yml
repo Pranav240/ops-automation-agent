@@ -15,5 +15,13 @@ services:
       interval: 5s
       retries: 10
 
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrantdata:/qdrant/storage
+
 volumes:
   pgdata:
+  qdrantdata:

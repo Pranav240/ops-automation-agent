@@ -82,9 +82,9 @@ def request(email=ALICE, text="My mug from ORD-1001 arrived broken."):
     return {"id": "REQ-T01", "customer_email": email, "request_text": text}
 
 
-def run_graph(deps, req=None, answer=None):
+def run_graph(deps, req=None, answer=None, critic=True):
     async def go():
-        graph = build_graph(deps, InMemorySaver())
+        graph = build_graph(deps, InMemorySaver(), critic=critic)
         out = await start(graph, req or request(), run_id="run-1")
         if answer is not None:
             out = await resume(graph, "run-1", answer)
@@ -296,3 +296,29 @@ def test_run_stops_at_max_llm_calls():
     deps = make_deps([plan(), lookup("ORD-1001"), lookup("ORD-1001")], max_iterations=2)
     with pytest.raises(BudgetExceeded, match="max iterations"):
         run_graph(deps)
+
+
+def test_graph_without_critic_skips_review():
+    deps = make_deps([plan(), lookup("ORD-1001"), refund("ORD-1001", 65.0), final()])
+    out = run_graph(deps, critic=False)
+    assert out["status"] == "done" and out["executed"]
+    assert len(deps.llm.provider.calls) == 4
+
+
+DECLINED = {"refusal": True}
+
+
+def test_declined_calls_end_in_a_refusal_without_actions():
+    deps = make_deps([DECLINED, DECLINED, DECLINED])
+    out = run_graph(deps)
+    assert out["status"] == "done" and out["action"] is None
+    assert out["kind"] == "refusal" and out["reply"] == nodes.DECLINED_REPLY
+    assert deps.retriever.queries == [request()["request_text"]]
+    assert written_actions() == []
+
+
+def test_declined_review_of_a_write_goes_to_human():
+    deps = make_deps([refund("ORD-1001", 65.0), final(), DECLINED])
+    update = asyncio.run(nodes.tool_agent(state(), deps))
+    review_update = asyncio.run(nodes.critic(state(**update), deps))
+    assert review_update["critique"]["ok"] is False

@@ -80,7 +80,8 @@ class AnthropicProvider:
 class FakeProvider:
     """Scripted provider for tests. Replies are returned in order.
 
-    A reply is a string (text answer) or {"tool": name, "input": {...}} (one tool call).
+    A reply is a string (text answer), {"tool": name, "input": {...}} (one tool call),
+    or {"refusal": True} (the model's safety system declined the call).
     """
 
     replies: list[str | dict]
@@ -112,6 +113,10 @@ class FakeProvider:
                 output_tokens=self.output_tokens,
                 stop_reason="end_turn",
                 content=[{"type": "text", "text": reply}],
+            )
+        if reply.get("refusal"):
+            return ProviderResult(
+                text="", input_tokens=self.input_tokens, output_tokens=0, stop_reason="refusal"
             )
         call = ToolCall(f"toolu_{len(self.calls)}", reply["tool"], reply["input"])
         return ProviderResult(

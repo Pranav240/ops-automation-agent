@@ -20,6 +20,7 @@ dependencies = [
     "llama-index-embeddings-fastembed>=0.7.0",
     "fastembed>=0.9.1",
     "httpx>=0.28.1",
+    "qdrant-client>=1.20.0",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +37,7 @@ include = ["agent*", "mock_api*", "evals*", "retrieval*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["live: calls the real LLM; runs only with RUN_LIVE=1"]
 
 [tool.ruff]
 line-length = 100

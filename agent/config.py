@@ -20,3 +20,7 @@ def db_url() -> str:
 
 def mock_api_url() -> str:
     return os.getenv("MOCK_API_URL", "http://127.0.0.1:8000")
+
+
+def qdrant_url() -> str:
+    return os.getenv("QDRANT_URL", "http://localhost:6333")

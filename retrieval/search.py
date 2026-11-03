@@ -5,6 +5,7 @@ Modes (for the ablations in Phase 3): vector, fulltext, hybrid, hybrid_rerank (d
 
 import asyncio
 import re
+import threading
 from dataclasses import dataclass
 
 import numpy as np
@@ -62,20 +63,23 @@ class HybridRetriever:
         self.candidates = candidates
         self._embed = None
         self._rerank = None
+        self._lock = threading.Lock()  # one model call at a time when requests run in parallel
 
     def embed(self, text: str) -> np.ndarray:
-        if self._embed is None:
-            from fastembed import TextEmbedding
+        with self._lock:
+            if self._embed is None:
+                from fastembed import TextEmbedding
 
-            self._embed = TextEmbedding(model_name=EMBED_MODEL)
-        return next(iter(self._embed.query_embed(text)))
+                self._embed = TextEmbedding(model_name=EMBED_MODEL)
+            return next(iter(self._embed.query_embed(text)))
 
     def rerank_scores(self, query: str, texts: list[str]) -> list[float]:
-        if self._rerank is None:
-            from fastembed.rerank.cross_encoder import TextCrossEncoder
+        with self._lock:
+            if self._rerank is None:
+                from fastembed.rerank.cross_encoder import TextCrossEncoder
 
-            self._rerank = TextCrossEncoder(model_name=RERANK_MODEL)
-        return list(self._rerank.rerank(query, texts))
+                self._rerank = TextCrossEncoder(model_name=RERANK_MODEL)
+            return list(self._rerank.rerank(query, texts))
 
     def _vector(self, conn, query: str) -> list[Hit]:
         vector = self.embed(query)

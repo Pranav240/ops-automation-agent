@@ -32,15 +32,22 @@ def traced(name: str, fn, deps: Deps):
     return node
 
 
-def build_graph(deps: Deps, checkpointer):
+def build_graph(deps: Deps, checkpointer, critic: bool = True):
+    """critic=False skips the critic (ablation): tool_agent goes straight to the gate."""
     graph = StateGraph(State)
-    for name in ("planner", "retriever", "tool_agent", "critic", "approval_gate", "commit"):
+    names = ["planner", "retriever", "tool_agent", "approval_gate", "commit"]
+    if critic:
+        names.insert(3, "critic")
+    for name in names:
         graph.add_node(name, traced(name, getattr(nodes, name), deps))
     graph.add_edge(START, "planner")
     graph.add_edge("planner", "retriever")
     graph.add_edge("retriever", "tool_agent")
-    graph.add_edge("tool_agent", "critic")
-    graph.add_conditional_edges("critic", nodes.after_critic, ["tool_agent", "approval_gate"])
+    if critic:
+        graph.add_edge("tool_agent", "critic")
+        graph.add_conditional_edges("critic", nodes.after_critic, ["tool_agent", "approval_gate"])
+    else:
+        graph.add_edge("tool_agent", "approval_gate")
     graph.add_edge("approval_gate", "commit")
     graph.add_edge("commit", END)
     return graph.compile(checkpointer=checkpointer)
