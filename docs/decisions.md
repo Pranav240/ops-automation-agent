@@ -12,3 +12,8 @@
 | 2026-10-21 | Cut order if behind: Hermes (A-O), Jev (B3), EKS, text-to-SQL, dashboard polish | Extras go first |
 | 2026-10-30 | Add safe rollout to Phase 6: git release tags, images tagged by version + commit, `helm rollback` drill, ConfigMap feature flags (critic on/off, approve-all mode), canary = 1 of 5 workers on the same queue | Close launch-checklist gap (rollout); free |
 | 2026-10-30 | Add incident handling: `docs/runbook.md` from Phase 5 (DLQ full, spend cap hit, stuck approval, key rotation); game day + retro in `docs/incidents/` in Phase 6; real pilot issues logged the same way in Phase 8, each becoming a regression test | Close launch-checklist gap (incidents); free |
+| 2026-11-03 | Add AWS Lambda (intake), S3 (Terraform state), DynamoDB (idempotency keys, on-demand), CloudWatch logs + alarms (DLQ depth, Lambda errors) to Phase 5 | Name the AWS services explicitly; free tier, about $0-1 |
+| 2026-11-03 | Add OpenTelemetry: one trace per request across intake -> queue -> worker -> API, exported over OTLP to Langfuse | End-to-end tracing and real latency; no new service; free |
+| 2026-11-03 | Async Python for API endpoints, workers and tool calls (Phases 2, 5, 6) | Workers wait on LLM and HTTP calls; free |
+| 2026-11-03 | Phase 7 dashboard in React + TypeScript | Type safety; free |
+| 2026-11-03 | Add Qdrant (Docker) as an extra retrieval variant, dev set only; pgvector stays the main store | Compare vector stores; free |
