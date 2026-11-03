@@ -145,3 +145,4 @@ Then the agent configuration is frozen in a tagged git commit before the test se
 
 | Date | Change | Reason |
 |---|---|---|
+| 2026-11-03 | Added a dev-only retrieval variant: vector search in Qdrant (same embeddings and chunks as pgvector) | Compare vector stores; no agent code or results existed yet; test set untouched |
