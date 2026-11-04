@@ -53,15 +53,44 @@ docker build -f docker/worker.Dockerfile -t ops-agent-worker:local --build-arg G
 kind load docker-image ops-agent-mock-api:local ops-agent-worker:local --name ops-agent
 helm repo add kedacore https://kedacore.github.io/charts
 helm install keda kedacore/keda --version 2.21.0 --namespace keda --create-namespace --wait
-uv run python scripts/kind_values.py
+uv run python scripts/helm_values.py --cluster kind
 helm install ops-agent deploy/helm/ops-agent -f deploy/helm/values.local.yaml --wait --timeout 6m
 uv run python scripts/scale_test.py --count 40 --cluster kind
 ```
 
-- Temporary AWS keys last 1 hour. Run `kind_values.py` and `helm upgrade` again when they expire.
+- Temporary AWS keys last 1 hour. Run `helm_values.py` and `helm upgrade` again when they expire.
 - Changing `POSTGRES_PASSWORD` needs a fresh install, because the database keeps its first password.
 - Delete `deploy/helm/values.local.yaml` afterwards. It holds secrets and is gitignored.
 - Finish with `kind delete cluster --name ops-agent`.
+
+## Workers on EKS
+
+One proof run only. About $0.25 an hour on AWS, so destroy it the same day. Apply the main stack
+first, then:
+
+```bash
+BUCKET=ops-agent-tfstate-$ACCOUNT
+export TF_VAR_admin_cidr=$(curl -s https://checkip.amazonaws.com)/32
+terraform -chdir=infra/aws/eks init -backend-config="bucket=$BUCKET"
+terraform -chdir=infra/aws/eks apply
+aws eks update-kubeconfig --name ops-agent --region $AWS_REGION --alias eks-ops-agent
+REGISTRY=$(terraform -chdir=infra/aws/eks output -raw image_registry)
+aws ecr get-login-password | docker login --username AWS --password-stdin $REGISTRY
+TAG=$(git rev-parse --short HEAD)
+docker tag ops-agent-worker:local $REGISTRY/ops-agent-worker:$TAG
+docker tag ops-agent-mock-api:local $REGISTRY/ops-agent-mock-api:$TAG
+docker push $REGISTRY/ops-agent-worker:$TAG
+docker push $REGISTRY/ops-agent-mock-api:$TAG
+helm install keda kedacore/keda --version 2.21.0 --namespace keda --create-namespace --wait \
+  --set podIdentity.aws.irsa.enabled=true \
+  --set podIdentity.aws.irsa.roleArn=$(terraform -chdir=infra/aws/eks output -raw keda_role_arn)
+uv run python scripts/helm_values.py --cluster eks --commit $TAG
+helm install ops-agent deploy/helm/ops-agent -f deploy/helm/values.local.yaml --wait --timeout 6m
+uv run python scripts/scale_test.py --count 40 --cluster eks
+```
+
+Then run `bash scripts/destroy.sh`, delete `deploy/helm/values.local.yaml`, and check the bill the
+next morning. Nodes do not scale in this proof, only pods.
 
 ## DLQ full
 

@@ -1,4 +1,4 @@
-# Defaults run on kind. Secrets never go here: scripts/kind_values.py writes them to
+# Defaults run on kind. Secrets never go here: scripts/helm_values.py writes them to
 # deploy/helm/values.local.yaml, which is gitignored.
 
 images:

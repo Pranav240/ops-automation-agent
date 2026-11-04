@@ -18,6 +18,18 @@ for execution in $running; do
   echo "stopped $execution"
 done
 
+# The EKS stack goes first, so nothing keeps charging if a later step stops.
+eks=infra/aws/eks
+if [ -d "$eks/.terraform" ]; then
+  terraform -chdir="$eks" destroy -auto-approve -input=false -var admin_cidr=0.0.0.0/32
+  left=$(terraform -chdir="$eks" state list)
+  if [ -n "$left" ]; then
+    echo "EKS stack still has resources, stopping here:" >&2
+    echo "$left" >&2
+    exit 1
+  fi
+fi
+
 terraform -chdir=infra/aws destroy -auto-approve -input=false
 
 left=$(terraform -chdir=infra/aws state list)

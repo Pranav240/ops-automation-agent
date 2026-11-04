@@ -63,7 +63,7 @@ def test_eks_uses_the_role_and_no_key():
     extra = {"keda.auth": "irsa", "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn": "r"}
     docs = render({**SECRETS, **QUEUE, **extra})
     auth = by_kind(docs, "TriggerAuthentication")["ops-agent-sqs"]["spec"]
-    assert auth == {"podIdentity": {"provider": "aws", "identityOwner": "workload"}}
+    assert auth == {"podIdentity": {"provider": "aws", "identityOwner": "keda"}}
     annotations = by_kind(docs, "ServiceAccount")["ops-agent-worker"]["metadata"]["annotations"]
     assert annotations == {"eks.amazonaws.com/role-arn": "r"}
 

@@ -29,6 +29,8 @@ jobs:
       - run: terraform -chdir=infra/aws validate
       - run: terraform -chdir=infra/aws/bootstrap init -backend=false
       - run: terraform -chdir=infra/aws/bootstrap validate
+      - run: terraform -chdir=infra/aws/eks init -backend=false
+      - run: terraform -chdir=infra/aws/eks validate
 
   # Builds the images and deploys the chart to a throwaway kind cluster. There is no AWS here, so
   # the workers and KEDA stay off; the setup job still proves the worker image runs.

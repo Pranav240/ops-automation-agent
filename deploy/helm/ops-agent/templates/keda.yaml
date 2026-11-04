@@ -7,7 +7,7 @@ spec:
   {{- if eq .Values.keda.auth "irsa" }}
   podIdentity:
     provider: aws
-    identityOwner: workload
+    identityOwner: keda # KEDA has its own read-only role, separate from the worker's
   {{- else }}
   secretTargetRef:
     - parameter: awsAccessKeyID
