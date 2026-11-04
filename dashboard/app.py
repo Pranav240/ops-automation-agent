@@ -4,7 +4,7 @@ Two bearer tokens: a viewer reads, an approver reads and decides. The decider's 
 the token, never from the request. A decision goes to Step Functions and the worker does the rest,
 so this service holds no LLM key and no mock API token, and cannot execute anything.
 
-Run: uvicorn dashboard.app:build --factory --port 8080 --env-file .env
+Run: uvicorn dashboard.app:build --factory --port 8090 --env-file .env
 """
 
 import hmac
