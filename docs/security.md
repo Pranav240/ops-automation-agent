@@ -60,8 +60,7 @@ From 2026-11-04 on kind and real AWS, with `claude-haiku-5-5`. See
 
 - 24 requests from one run is a small sample, and these are not the pre-registered test rows.
 - No attack reached the approval gate. The agent refused, asked a question or took an action policy
-  allows (REQ-128, SEC-08), so this
-  run says nothing about a human being talked into approving.
+  allows (REQ-128, SEC-08), so this run says nothing about a human being talked into approving.
 
 ## Known limits
 
