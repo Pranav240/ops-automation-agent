@@ -43,6 +43,8 @@ class Decision(BaseModel):
 
 def edited_args(pending: dict, changes: dict | None) -> dict:
     """The proposal with the human's changes. An edit may not move the action to another order."""
+    if pending["action"] is None:
+        raise HTTPException(422, "a reply with no action has nothing to edit")
     if not changes:
         raise HTTPException(422, "an edit needs args")
     args = {**pending["args"], **changes}

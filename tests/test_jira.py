@@ -172,6 +172,27 @@ def test_agent_error_posts_internal_note_and_is_recorded():
     assert worker.history.rows[0]["status"] == "error"
 
 
+def test_plan_update_for_a_reply_with_no_action():
+    paused = {
+        "run_id": "r",
+        "status": "pending_approval",
+        "approval_request": {"action": None, "args": {}, "reasons": ["x"], "reply": "Hi"},
+    }
+    update = plan_update(paused)
+    assert not update.public and update.comment.startswith("Agent proposes this reply")
+    rejected = {"run_id": "r", "status": "rejected", "action": None, "approval": {"by": "o"}}
+    assert plan_update(rejected).comment.startswith("Proposed reply was rejected")
+    approved = {
+        "run_id": "r",
+        "status": "done",
+        "action": None,
+        "kind": "answer",
+        "reply": "Hi",
+        "approval": {"decision": "approve"},
+    }
+    assert plan_update(approved).comment == "Hi"
+
+
 def test_plan_update_for_each_outcome():
     done = {"run_id": "r", "status": "done", "kind": "answer", "action": None, "reply": "Hi"}
     assert plan_update(done).status == RESOLVED and plan_update(done).public
@@ -183,7 +204,7 @@ def test_plan_update_for_each_outcome():
     assert not plan_update(rejected).public and plan_update(rejected).status is None
     blocked = {**done, "status": "blocked", "api_result": None}
     assert not plan_update(blocked).public
-    approved = {**done, "approval": {"decision": "approve", "by": "owner"}}
+    approved = {**done, "action": "refund", "approval": {"decision": "approve", "by": "owner"}}
     assert plan_update(approved).comment.endswith("our team has approved this.")
-    edited = {**done, "approval": {"decision": "edit"}, "args": {"amount": 100.0}}
+    edited = {**approved, "approval": {"decision": "edit"}, "args": {"amount": 100.0}}
     assert plan_update(edited).comment.endswith("The final amount is $100.00.")

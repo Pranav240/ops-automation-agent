@@ -51,6 +51,8 @@ class Update:
 def approval_note(out: dict) -> str:
     """The draft reply was written before the decision, so say what the human decided."""
     approval = out.get("approval", {})
+    if not out.get("action"):
+        return ""
     if approval.get("decision") == "approve":
         return "\n\nUpdate: our team has approved this."
     if approval.get("decision") == "edit":
@@ -65,8 +67,12 @@ def plan_update(out: dict) -> Update:
     run_id, status = out["run_id"], out["status"]
     if status == "pending_approval":
         request = out["approval_request"]
+        if request["action"]:
+            proposal = f"Agent proposes {request['action']} {json.dumps(request['args'])}."
+        else:
+            proposal = "Agent proposes this reply with no action."
         return Update(
-            f"Agent proposes {request['action']} {json.dumps(request['args'])}.\n"
+            f"{proposal}\n"
             f"Needs approval: {'; '.join(request['reasons'])}.\n"
             f"Draft reply: {request['reply']}\n"
             f"Decide: python -m integrations.worker --resume {run_id} "
@@ -84,8 +90,9 @@ def plan_update(out: dict) -> Update:
         return Update(out["reply"] + approval_note(out), public=True, status=next_status)
     if status == "rejected":
         by = out["approval"].get("by")
+        proposed = out["action"] or "reply"
         return Update(
-            f"Proposed {out['action']} was rejected by {by}. Nothing was executed and no reply "
+            f"Proposed {proposed} was rejected by {by}. Nothing was executed and no reply "
             "was sent; please answer the customer.",
             public=False,
             status=None,
