@@ -19,6 +19,7 @@ class Ticket:
     customer_email: str
     summary: str
     description: str
+    source: str = "jira"  # "api" requests have no ticket, so nothing is posted to Jira
 
     @property
     def text(self) -> str:

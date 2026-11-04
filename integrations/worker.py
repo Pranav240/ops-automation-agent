@@ -107,6 +107,17 @@ class Worker:
         self.history = history
         self.meta = meta
 
+    async def existing(self, run_id: str) -> dict | None:
+        """This run's result if it already got that far (a queue can deliver a message twice)."""
+        snapshot = await self.graph.aget_state(config(run_id))
+        if "outcome" in snapshot.values:
+            return {"run_id": run_id, **snapshot.values["outcome"]}
+        for task in snapshot.tasks:
+            if task.interrupts:
+                request = task.interrupts[0].value
+                return {"run_id": run_id, "status": "pending_approval", "approval_request": request}
+        return None
+
     async def post(self, key: str, update: Update) -> None:
         await self.jira.comment(key, update.comment, update.public)
         if update.status and not await self.jira.move_to(key, update.status):
@@ -132,26 +143,35 @@ class Worker:
             "cost_usd": budget.spent_usd if budget else 0.0,
             "latency_s": round(latency_s, 3),
         }
-        row = from_record(rec, "jira", ticket_key=ticket.key, customer_email=ticket.customer_email)
+        key = ticket.key if ticket.source == "jira" else None
+        row = from_record(rec, ticket.source, ticket_key=key, customer_email=ticket.customer_email)
         await asyncio.to_thread(self.history.record, row)
+
+    async def run(self, ticket: Ticket, run_id: str) -> dict:
+        """Run the agent for a ticket once, post the result to Jira and record it."""
+        began = time.monotonic()
+        out = await self.existing(run_id)
+        if out is None:
+            request = {"id": ticket.key, "customer_email": ticket.customer_email}
+            request["request_text"] = ticket.text
+            out = await start(self.graph, request, run_id=run_id)
+        if ticket.source == "jira":
+            await self.post(ticket.key, plan_update(out))
+        await self.record(ticket, run_id, time.monotonic() - began)
+        print(f"{ticket.key}: {out['status']} {out.get('action') or out.get('kind') or ''}")
+        return out
 
     async def handle(self, ticket: Ticket) -> dict | None:
         await self.jira.mark_processed(ticket.key)  # claim it first so it is never run twice
-        request = {"id": ticket.key, "customer_email": ticket.customer_email}
-        request["request_text"] = ticket.text
         run_id, began = uuid.uuid4().hex, time.monotonic()
         try:
-            out = await start(self.graph, request, run_id=run_id)
+            return await self.run(ticket, run_id)
         except Exception as e:
             error = f"{type(e).__name__}: {e}"
             await self.jira.comment(ticket.key, f"Agent error, please handle: {error}", False)
             await self.record(ticket, run_id, time.monotonic() - began, error=error)
             print(f"{ticket.key}: error {error}")
             return None
-        await self.post(ticket.key, plan_update(out))
-        await self.record(ticket, run_id, time.monotonic() - began)
-        print(f"{ticket.key}: {out['status']} {out.get('action') or out.get('kind') or ''}")
-        return out
 
     async def poll_once(self) -> int:
         tickets = await self.jira.new_tickets()
@@ -161,10 +181,11 @@ class Worker:
 
     async def resume(self, run_id: str, answer: dict) -> dict:
         key = await asyncio.to_thread(self.history.ticket_for, run_id)
-        if key is None:
-            raise SystemExit(f"run {run_id} has no Jira ticket in agent_runs")
-        out = await resume(self.graph, run_id, answer)
-        await self.post(key, plan_update(out))
+        out = await self.existing(run_id)
+        if out is None or out["status"] == "pending_approval":
+            out = await resume(self.graph, run_id, answer)
+        if key:
+            await self.post(key, plan_update(out))
         args = out.get("args") or {}
         await asyncio.to_thread(
             self.history.update,
@@ -175,7 +196,7 @@ class Worker:
             amount=args.get("amount"),
             reason=args.get("reason"),
         )
-        print(f"{key}: {out['status']} after {answer['decision']} by {answer['by']}")
+        print(f"{key or run_id}: {out['status']} after {answer['decision']} by {answer['by']}")
         return out
 
 
