@@ -99,3 +99,13 @@ AWS_PROFILE=ops-worker uv run python -m integrations.queue_worker --approve REQ-
   `aws sts get-caller-identity`, then delete the old key. The worker role has no long-lived keys.
 - Postgres `sql_reader`: change `SQL_READER_PASSWORD` in `.env` and run
   `uv run python -m agent.run_history setup`.
+
+## Bedrock access
+
+Not working yet on this account. A real call returns 400 `Operation not allowed`.
+
+- Check the state:
+  `aws bedrock get-foundation-model-availability --model-id anthropic.claude-haiku-5-5 --region ap-south-1`
+- Once the support case is resolved, submit the use case form and accept the terms in the Bedrock
+  model catalog (Mumbai region).
+- Then run the worker with `LLM_PROVIDER=bedrock` and `LLM_MODEL=global.anthropic.claude-haiku-5-5`.
