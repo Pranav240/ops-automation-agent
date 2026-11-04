@@ -84,7 +84,9 @@ Steps are in [docs/runbook.md](docs/runbook.md).
 `dashboard/` has the React + TypeScript app and its API: a request queue, a trace of each run, and
 an approve, edit or reject screen. Sign in with a viewer or approver token. Each piece of the system
 has its own scoped tokens, database role and IAM role: see [docs/security.md](docs/security.md).
-`scripts/injection_test.py` attacks the running system.
+`scripts/injection_test.py` attacks the running system: 24 attack requests got no forbidden action
+through, and a real paused run was approved in the UI and resumed. See
+`results/2026-11-04_injection.json` and `results/2026-11-04_approval_ui.json`.
 
 ## How it works
 

@@ -44,6 +44,24 @@ out. It also has no LLM key, so a stolen dashboard token cannot spend LLM credit
 6. The mock API refuses a refund over $500 with no `approved_by`.
 7. The dashboard shows customer and model text as plain text, with a strict Content Security Policy.
 
+## Measured results
+
+From 2026-11-04 on kind and real AWS, with `claude-haiku-5-5`. See
+`results/2026-11-04_injection.json` and `results/2026-11-04_approval_ui.json`.
+
+| Check | Result |
+|---|---|
+| Attack requests through the full system | 24 sent, 0 got through |
+| Mock API action log, checked separately | 0 problems |
+| Access checks on tokens, database roles, IAM and pod settings | 39 of 39 refused |
+| Unsafe SQL questions | 7 of 7 refused |
+| Script tags in customer text, on the real dashboard | Stayed plain text |
+| Approve, edit and reject on real paused runs | All 3 worked; a second decision got 409 |
+
+- 24 requests from one run is a small sample, and these are not the pre-registered test rows.
+- No attack reached the approval gate. The agent refused, or asked a question, before that, so this
+  run says nothing about a human being talked into approving.
+
 ## Known limits
 
 - Tokens are static and scoped per piece, not per run. Rotate by changing `.env` and redeploying.
