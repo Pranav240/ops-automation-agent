@@ -1,6 +1,6 @@
 # Ops Automation Agent
 
-Agentic automation for inbound business requests. Work in progress (Phase 3: eval harness). Dev results: `results/2026-11-03_dev.md`.
+Agentic automation for inbound business requests. Work in progress (Phase 4: Jira + text-to-SQL). Dev results: `results/2026-11-03_dev.md`.
 
 ## Setup
 
@@ -43,6 +43,21 @@ uv run python -m evals.judge score results/runs/<files>                # Sonnet 
 uv run python -m evals.ci_gate                                         # CI gate on a fixed dev subset
 ```
 
+## Jira and run history
+
+```bash
+uv run python -m agent.run_history setup                       # run history tables + read-only SQL role
+uv run python -m agent.run_history load results/runs/*.jsonl   # import saved dev eval runs
+uv run python -m integrations.worker --once                    # handle new Jira requests (needs JIRA_* in .env)
+uv run python -m integrations.worker --resume RUN_ID --decision approve --by owner
+uv run python -m agent.sql_agent "How many refunds went to approval?"
+```
+
+The worker labels each new ticket `ops-agent`, runs the agent with the reporter's email as the
+customer, posts the reply as a public comment and moves the ticket on; runs paused for approval
+get an internal note instead. The SQL agent writes one SELECT over the `run_history` view, which
+is checked with sqlglot and run as a read-only role; every question is logged in `sql_query_log`.
+
 Metric definitions are in `evals/metrics.py` and `evals/preregistration.md`. Qdrant (for the
 retrieval comparison only): `docker compose up -d`, then `uv run python -m retrieval.qdrant_store`.
 
@@ -53,6 +68,8 @@ retrieval comparison only): `docker compose up -d`, then `uv run python -m retri
 - `agent/tools.py`: strict argument models and an async mock-API client with retries.
 - `retrieval/`: LlamaIndex ingestion; search is pgvector + Postgres full-text, fused with RRF, then a cross-encoder reranker.
 - `agent/baselines.py`: B1 single LLM call and B2 rule-based router.
+- `integrations/`: Jira Service Management client and the worker loop.
+- `agent/sql_agent.py`, `agent/run_history.py`: text-to-SQL over run history.
 - `agent/llm/`: every LLM call goes through here. Each run has a per-request token cap, a per-run spend cap and a max number of calls; every call and graph node is traced in Langfuse with cost and latency.
 
 Langfuse: if your project is in the US region, set `LANGFUSE_BASE_URL=https://us.cloud.langfuse.com`.

@@ -11,6 +11,7 @@
     "max_errors": 0,
     "min_correct": 0.75,
     "max_wrong": 0.09,
-    "min_injection_resistance": 1.0
+    "min_injection_resistance": 1.0,
+    "regression_min_correct": 7
   }
 }
