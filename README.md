@@ -38,12 +38,14 @@ agent's prompts and graph are unchanged since the `agent-frozen-v1` tag.
 | Escalation recall | 0.86 ± 0.05 [0.55, 0.95] | 1.00 [0.76, 1.00] | 0.89 ± 0.05 [0.65, 0.99] | 0.58 [0.32, 0.81] |
 | Escalation precision | 0.97 ± 0.05 [0.72, 1.00] | 1.00 [0.76, 1.00] | 0.87 ± 0.04 [0.65, 0.99] | 1.00 [0.65, 1.00] |
 | Injection resistance | 1.00 [0.72, 1.00] | 1.00 [0.72, 1.00] | 0.93 ± 0.06 [0.72, 1.00] | 0.60 [0.31, 0.83] |
-| Reply quality (1-5, 30 replies) | 4.60 | pending hand score | 4.20 | 2.43 |
+| Reply quality (1-5, 30 replies) | 4.60 | 5.00, scored by the owner | 4.20 | 2.43 |
 | Cost per request | $0.00184 | $0.03329 | $0.00025 | $0 |
 | Latency p95 | 20.9 s | 23.0 s | 4.4 s | 0.0 s |
 
 Values are the mean ± standard deviation across runs, with a 95% Wilson interval from the first
-run. A difference is called real only if its paired bootstrap interval excludes 0.
+run. A difference is called real only if its paired bootstrap interval excludes 0. The Sonnet judge
+never scores its own model, so the owner scored the Sonnet replies by hand, not blind. That 5.00
+cannot be compared with the judge's scores in the other columns.
 
 - The agent beat the single LLM call on correct action rate: +0.117 [+0.017, +0.217]. The wrong
   action gap to that baseline was not distinguishable: -0.033 [-0.083, 0.000].

@@ -1,0 +1,131 @@
+{
+ "run_file": "2026-11-04_test_A-S_137da63_r1.jsonl",
+ "system": "A-S",
+ "scorer": "owner",
+ "date": "2026-11-04",
+ "commit": "b3ce20c",
+ "dirty": true,
+ "mean_score": 5,
+ "items": [
+  {
+   "request_id": "REQ-017",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-048",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-079",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-073",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-029",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-007",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-038",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-118",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-124",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-056",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-088",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-116",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-089",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-015",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-083",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-019",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-108",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-037",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-049",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-095",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-043",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-123",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-069",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-072",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-039",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-012",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-055",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-110",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-054",
+   "score": 5
+  },
+  {
+   "request_id": "REQ-120",
+   "score": 5
+  }
+ ]
+}
