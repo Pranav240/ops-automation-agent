@@ -1,6 +1,7 @@
 """Run systems over a dataset split and save one JSON line per (system, repeat, request).
 
-Systems: B1 (single LLM call), B2 (rule router), A-H (full agent). Agent options:
+Systems: B1 (single LLM call), B2 (rule router), A-H (full agent on Haiku), A-S (the same
+agent on Sonnet). Agent options:
 --no-critic and --retrieval MODE (ablations). Each request gets a fresh in-memory mock API.
 An agent run that pauses for approval is recorded as sent to approval and not resumed.
 
@@ -14,6 +15,7 @@ Usage:
 
 import argparse
 import asyncio
+import copy
 import hashlib
 import json
 import secrets
@@ -40,7 +42,9 @@ ROOT = Path(__file__).parent.parent
 DATASET = ROOT / "evals" / "dataset"
 RUNS_DIR = ROOT / "results" / "runs"
 WRITE_ACTIONS = {action for action, _ in WRITE_TOOLS.values()}
-SYSTEMS = ("B1", "B2", "A-H")
+# A-S differs from A-H only here. Sonnet costs 20 times Haiku, so the usual run cap would stop
+# it partway (preregistration amendment 2026-11-04).
+SYSTEM_MODEL = {"A-S": ("claude-sonnet-5-5", 0.25)}
 
 
 def load_split(split: str, allow_test: bool = False) -> list[dict]:
@@ -161,7 +165,7 @@ async def run_agent(row, llm, retriever, critic, **_):
     return rec
 
 
-RUNNERS = {"B1": run_b1, "B2": run_b2, "A-H": run_agent}
+RUNNERS = {"B1": run_b1, "B2": run_b2, "A-H": run_agent, "A-S": run_agent}
 
 
 async def run_system(system, rows, llm, retriever, critic, concurrency, timeout_s):
@@ -184,8 +188,16 @@ async def run_system(system, rows, llm, retriever, critic, concurrency, timeout_
     return await asyncio.gather(*(one(row) for row in rows))
 
 
+def client_for(system: str, llm: LLMClient) -> LLMClient:
+    if system not in SYSTEM_MODEL:
+        return llm
+    client = copy.copy(llm)
+    client.model, client.max_spend_per_run_usd = SYSTEM_MODEL[system]
+    return client
+
+
 def label_for(system: str, critic: bool, retrieval: str) -> str:
-    if system != "A-H":
+    if system not in ("A-H", "A-S"):
         return system
     parts = [system] + ([] if critic else ["no-critic"])
     return "_".join(parts + ([] if retrieval == "hybrid_rerank" else [retrieval]))
@@ -209,16 +221,23 @@ async def main(args) -> list[Path]:
         if system not in RUNNERS:
             sys.exit(f"unknown system {system}")
         label = label_for(system, not args.no_critic, args.retrieval)
+        client = client_for(system, llm)
         meta = {
             "system": label,
-            "model": None if system == "B2" else llm.model,
+            "model": None if system == "B2" else client.model,
             "split": args.split,
             "date": date.today().isoformat(),
             **git,
         }
         for repeat in range(1, args.repeat + 1):
             records = await run_system(
-                system, rows, llm, retriever, not args.no_critic, args.concurrency, args.timeout
+                system,
+                rows,
+                client,
+                retriever,
+                not args.no_critic,
+                args.concurrency,
+                args.timeout,
             )
             path = RUNS_DIR / f"{meta['date']}_{args.split}_{label}_{git['commit']}_r{repeat}.jsonl"
             with path.open("w", encoding="utf-8") as f:
