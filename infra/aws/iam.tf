@@ -174,13 +174,12 @@ data "aws_iam_policy_document" "worker" {
     resources = [aws_dynamodb_table.runs.arn]
   }
   statement {
-    actions   = ["bedrock-mantle:CreateInference"]
-    resources = ["arn:aws:bedrock-mantle:${var.region}:${local.account}:project/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "bedrock-mantle:Model"
-      values   = [var.bedrock_model]
-    }
+    actions = ["bedrock:InvokeModel"]
+    resources = [
+      "arn:aws:bedrock:${var.region}:${local.account}:inference-profile/global.${var.bedrock_model}",
+      "arn:aws:bedrock:${var.region}::foundation-model/${var.bedrock_model}",
+      "arn:aws:bedrock:::foundation-model/${var.bedrock_model}",
+    ]
   }
 }
 

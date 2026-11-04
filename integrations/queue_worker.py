@@ -113,7 +113,10 @@ class QueueWorker:
         )
         messages = response.get("Messages", [])
         for message in messages:
-            await self.process(message)
+            try:
+                await self.process(message)
+            except Exception as e:  # it stays on the queue, so SQS retries it, then the DLQ
+                print(f"message failed: {type(e).__name__}: {e}")
         return len(messages)
 
 

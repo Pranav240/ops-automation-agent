@@ -286,8 +286,7 @@ def test_a_message_delivered_twice_refunds_once():
 
 def test_failed_run_leaves_the_message_on_the_queue():
     _, _, queue, _ = queue_setup([], [run_message()])  # no replies: the fake model raises
-    with pytest.raises(Exception):  # noqa: B017
-        asyncio.run(queue.poll_once())
+    assert asyncio.run(queue.poll_once()) == 1  # the worker keeps running
     assert queue.sqs.deleted == [] and queue.sfn.successes == []
 
 
@@ -394,7 +393,7 @@ def test_submit_signs_for_api_gateway(monkeypatch):
 
 def test_llm_provider_setting_selects_bedrock(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "bedrock")
-    monkeypatch.setenv("LLM_MODEL", "anthropic.claude-haiku-5-5")
+    monkeypatch.setenv("LLM_MODEL", "global.anthropic.claude-haiku-5-5")
     monkeypatch.setenv("AWS_REGION", "ap-south-1")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "fake")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "fake")
@@ -404,4 +403,5 @@ def test_llm_provider_setting_selects_bedrock(monkeypatch):
 
 
 def test_bedrock_model_has_a_price():
-    assert cost_usd("anthropic.claude-haiku-5-5", 1_000_000, 1_000_000) == pytest.approx(0.60)
+    model = "global.anthropic.claude-haiku-5-5"
+    assert cost_usd(model, 1_000_000, 1_000_000) == pytest.approx(0.60)
