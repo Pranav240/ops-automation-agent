@@ -222,6 +222,19 @@ def test_trace_of_a_paused_run():
     assert trace["request_text"] == BASE["request_text"]
 
 
+def test_trace_reads_a_pause_saved_as_a_plain_dict():
+    """The dashboard image has no langgraph core, so a saved Interrupt loads as a dict."""
+    saved = {"value": PENDING, "id": "abc"}
+    checkpoints = [
+        tuple_of(
+            "2026-11-04T10:00:00+00:00",
+            {**BASE, "branch:to:approval_gate": None},
+            [("task", "__interrupt__", [saved])],
+        )
+    ]
+    assert build_trace(checkpoints)["pending"] == PENDING
+
+
 def test_trace_of_a_finished_run_has_no_pending_decision():
     outcome = {"status": "done", "executed": True}
     checkpoints = [

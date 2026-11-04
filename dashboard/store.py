@@ -79,6 +79,11 @@ def seconds_between(start: str, end: str) -> float:
     return round(gap.total_seconds(), 3)
 
 
+def interrupt_value(interrupt) -> dict:
+    """An Interrupt object, or a plain dict in the dashboard image, which has no langgraph core."""
+    return interrupt["value"] if isinstance(interrupt, dict) else interrupt.value
+
+
 def build_trace(checkpoints: list) -> dict:
     """Turn a run's checkpoints, oldest first, into its request, steps and paused decision.
 
@@ -98,7 +103,7 @@ def build_trace(checkpoints: list) -> dict:
         else:
             for _, channel, value in current.pending_writes or []:
                 if channel == INTERRUPT:
-                    pending = value[0].value if isinstance(value, list) else value.value
+                    pending = interrupt_value(value[0] if isinstance(value, list) else value)
             step["seconds"] = None
             step["output"] = {"waiting_for": pending} if pending else {}
         steps.append(step)
