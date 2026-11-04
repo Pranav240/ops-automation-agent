@@ -357,6 +357,22 @@ def test_another_customers_order_counts_as_a_failed_lookup():
     assert out["failed_lookups"] == ["ORD-1011"] and out["looked_up"] == []
 
 
+def test_empty_reply_gets_another_turn():
+    replies = [
+        plan(),
+        final(reply=""),
+        lookup("ORD-1001"),
+        refund("ORD-1001", 65.0),
+        final(),
+        review(),
+    ]
+    deps = make_deps(replies)
+    out = run_graph(deps)
+    assert out["reply"] == "Done." and out["executed"]
+    assert written_actions()[0]["action"] == "refund"
+    assert nodes.EMPTY_REPLY_NOTE in str(deps.llm.provider.calls[2]["messages"])
+
+
 def test_found_order_is_not_a_failed_lookup():
     deps = make_deps([plan(), lookup("ORD-1001"), final(), review()])
     assert run_graph(deps)["failed_lookups"] == []
