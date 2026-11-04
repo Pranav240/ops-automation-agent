@@ -18,6 +18,9 @@ spec:
           imagePullPolicy: {{ .Values.images.pullPolicy }}
           ports:
             - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: ops-agent-mock-api-secrets
           readinessProbe:
             httpGet:
               path: /health

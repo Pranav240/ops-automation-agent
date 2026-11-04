@@ -154,7 +154,7 @@ resource "aws_iam_role_policy" "state_machine" {
   policy = data.aws_iam_policy_document.state_machine.json
 }
 
-# Worker. On this PC it is assumed through the ops-worker profile; Phase 6 moves it to Kubernetes.
+# Worker. Assumed through the ops-worker profile on this PC, and with temporary keys on kind.
 resource "aws_iam_role" "worker" {
   name               = "${local.name}-worker"
   assume_role_policy = data.aws_iam_policy_document.worker_assume.json
@@ -167,24 +167,45 @@ data "aws_iam_policy_document" "worker" {
     resources = [aws_sqs_queue.work.arn]
   }
   statement {
-    actions   = ["states:SendTaskSuccess", "states:SendTaskFailure"]
+    actions   = ["states:SendTaskSuccess"]
     resources = [aws_sfn_state_machine.request.arn]
   }
-  statement {
-    actions   = ["dynamodb:GetItem"]
-    resources = [aws_dynamodb_table.runs.arn]
-  }
-  statement {
-    actions = ["bedrock:InvokeModel"]
-    resources = [
-      "arn:aws:bedrock:${var.region}:${local.account}:inference-profile/global.${var.bedrock_model}",
-      "arn:aws:bedrock:${var.region}::foundation-model/${var.bedrock_model}",
-      "arn:aws:bedrock:::foundation-model/${var.bedrock_model}",
-    ]
+  dynamic "statement" {
+    for_each = var.bedrock_enabled ? [1] : []
+    content {
+      actions = ["bedrock:InvokeModel"]
+      resources = [
+        "arn:aws:bedrock:${var.region}:${local.account}:inference-profile/global.${var.bedrock_model}",
+        "arn:aws:bedrock:${var.region}::foundation-model/${var.bedrock_model}",
+        "arn:aws:bedrock:::foundation-model/${var.bedrock_model}",
+      ]
+    }
   }
 }
 
 resource "aws_iam_role_policy" "worker" {
   role   = aws_iam_role.worker.id
   policy = data.aws_iam_policy_document.worker.json
+}
+
+# Dashboard: read a run's approval token and send the human decision. Nothing else.
+resource "aws_iam_role" "dashboard" {
+  name               = "${local.name}-dashboard"
+  assume_role_policy = data.aws_iam_policy_document.worker_assume.json
+}
+
+data "aws_iam_policy_document" "dashboard" {
+  statement {
+    actions   = ["dynamodb:GetItem"]
+    resources = [aws_dynamodb_table.runs.arn]
+  }
+  statement {
+    actions   = ["states:SendTaskSuccess"]
+    resources = [aws_sfn_state_machine.request.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "dashboard" {
+  role   = aws_iam_role.dashboard.id
+  policy = data.aws_iam_policy_document.dashboard.json
 }

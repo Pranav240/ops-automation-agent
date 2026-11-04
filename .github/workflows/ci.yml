@@ -17,6 +17,21 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci --no-audit --no-fund
+      - run: npm audit --audit-level=high
+      - run: npm test
+      - run: npm run build
+
   terraform:
     runs-on: ubuntu-latest
     steps:
@@ -33,7 +48,8 @@ jobs:
       - run: terraform -chdir=infra/aws/eks validate
 
   # Builds the images and deploys the chart to a throwaway kind cluster. There is no AWS here, so
-  # the workers and KEDA stay off; the setup job still proves the worker image runs.
+  # the workers and KEDA stay off; the setup job still proves the worker image runs and the
+  # database roles are created.
   kind:
     runs-on: ubuntu-latest
     steps:
@@ -44,10 +60,12 @@ jobs:
       - run: helm lint deploy/helm/ops-agent -f deploy/helm/ci-values.yaml
       - run: docker build -f docker/mock-api.Dockerfile -t ops-agent-mock-api:local .
       - run: docker build -f docker/worker.Dockerfile -t ops-agent-worker:local --build-arg GIT_COMMIT=${GITHUB_SHA::7} .
-      - run: kind load docker-image ops-agent-mock-api:local ops-agent-worker:local --name ops-agent
+      - run: docker build -f docker/dashboard.Dockerfile -t ops-agent-dashboard:local .
+      - run: kind load docker-image ops-agent-mock-api:local ops-agent-worker:local ops-agent-dashboard:local --name ops-agent
       - run: helm install ops-agent deploy/helm/ops-agent -f deploy/helm/ci-values.yaml --wait --timeout 8m
       - run: kubectl wait --for=condition=complete job/ops-agent-setup --timeout=60s
       - run: kubectl rollout status deploy/ops-agent-mock-api --timeout=60s
+      - run: kubectl rollout status deploy/ops-agent-dashboard --timeout=60s
       - if: failure()
         run: kubectl get pods -A; kubectl describe job ops-agent-setup; kubectl logs job/ops-agent-setup --all-containers
 

@@ -60,7 +60,6 @@ locals {
   # The main stack owns these. Names, not lookups, so this stack can be planned on its own.
   work_queue_arn    = "${local.prefix}:sqs:${var.region}:${local.account}:${local.name}-work"
   state_machine_arn = "${local.prefix}:states:${var.region}:${local.account}:stateMachine:${local.name}-request"
-  runs_table_arn    = "${local.prefix}:dynamodb:${var.region}:${local.account}:table/${local.name}-runs"
 }
 
 # Network
@@ -239,12 +238,8 @@ data "aws_iam_policy_document" "worker" {
     resources = [local.work_queue_arn]
   }
   statement {
-    actions   = ["states:SendTaskSuccess", "states:SendTaskFailure"]
+    actions   = ["states:SendTaskSuccess"]
     resources = [local.state_machine_arn]
-  }
-  statement {
-    actions   = ["dynamodb:GetItem"]
-    resources = [local.runs_table_arn]
   }
 }
 

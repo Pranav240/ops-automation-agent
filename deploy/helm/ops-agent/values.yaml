@@ -4,6 +4,7 @@
 images:
   worker: ops-agent-worker:local
   mockApi: ops-agent-mock-api:local
+  dashboard: ops-agent-dashboard:local
   postgres: pgvector/pgvector:pg17
   pullPolicy: IfNotPresent
 
@@ -26,6 +27,12 @@ keda:
   pollingInterval: 10
   cooldownPeriod: 60
   auth: secret # secret on kind, irsa on EKS
+
+dashboard:
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
 
 mockApi:
   resources:
@@ -59,10 +66,17 @@ config:
   JIRA_EMAIL: ""
   JIRA_PROJECT_KEY: ""
 
-# Fill these from a gitignored values file. POSTGRES_PASSWORD and SQL_READER_PASSWORD are required.
+# Fill these from a gitignored values file. The passwords and tokens are required.
 secrets:
   POSTGRES_PASSWORD: ""
   SQL_READER_PASSWORD: ""
+  WORKER_DB_PASSWORD: ""
+  DASHBOARD_DB_PASSWORD: ""
+  MOCK_API_READ_TOKEN: ""
+  MOCK_API_WRITE_TOKEN: ""
+  MOCK_API_ADMIN_TOKEN: ""
+  DASHBOARD_VIEWER_TOKEN: ""
+  DASHBOARD_APPROVER_TOKEN: ""
   ANTHROPIC_API_KEY: ""
   LANGFUSE_PUBLIC_KEY: ""
   LANGFUSE_SECRET_KEY: ""
@@ -70,3 +84,6 @@ secrets:
   AWS_ACCESS_KEY_ID: ""
   AWS_SECRET_ACCESS_KEY: ""
   AWS_SESSION_TOKEN: ""
+  DASHBOARD_AWS_ACCESS_KEY_ID: ""
+  DASHBOARD_AWS_SECRET_ACCESS_KEY: ""
+  DASHBOARD_AWS_SESSION_TOKEN: ""

@@ -25,11 +25,11 @@ spec:
           command:
             - sh
             - -c
-            - python -m retrieval.ingest && python -m agent.run_history setup && python -m integrations.queue_worker --setup
+            - python -m retrieval.ingest && python -m integrations.queue_worker --setup && python -m agent.run_history setup
           envFrom:
             - configMapRef:
                 name: ops-agent-config
             - secretRef:
-                name: ops-agent-secrets
+                name: ops-agent-setup-secrets
           resources:
             {{- toYaml .Values.setup.resources | nindent 12 }}

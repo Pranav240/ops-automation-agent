@@ -11,7 +11,20 @@ import yaml
 
 ROOT = Path(__file__).parent.parent
 CHART = ROOT / "deploy" / "helm" / "ops-agent"
-SECRETS = {"secrets.POSTGRES_PASSWORD": "x", "secrets.SQL_READER_PASSWORD": "y"}
+SECRETS = {
+    f"secrets.{name}": "x"
+    for name in (
+        "POSTGRES_PASSWORD",
+        "SQL_READER_PASSWORD",
+        "WORKER_DB_PASSWORD",
+        "DASHBOARD_DB_PASSWORD",
+        "MOCK_API_READ_TOKEN",
+        "MOCK_API_WRITE_TOKEN",
+        "MOCK_API_ADMIN_TOKEN",
+        "DASHBOARD_VIEWER_TOKEN",
+        "DASHBOARD_APPROVER_TOKEN",
+    )
+}
 QUEUE = {"config.OPS_WORK_QUEUE_URL": "https://q"}
 
 spec = importlib.util.spec_from_file_location("scale_test", ROOT / "scripts" / "scale_test.py")
@@ -35,7 +48,12 @@ def by_kind(docs: list[dict], kind: str) -> dict:
 @needs_helm
 def test_every_container_has_limits_and_probes():
     deployments = by_kind(render({**SECRETS, **QUEUE}), "Deployment")
-    assert set(deployments) == {"ops-agent-worker", "ops-agent-mock-api", "ops-agent-postgres"}
+    assert set(deployments) == {
+        "ops-agent-worker",
+        "ops-agent-mock-api",
+        "ops-agent-postgres",
+        "ops-agent-dashboard",
+    }
     for deployment in deployments.values():
         for container in deployment["spec"]["template"]["spec"]["containers"]:
             assert {"cpu", "memory"} <= set(container["resources"]["limits"])
