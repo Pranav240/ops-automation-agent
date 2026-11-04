@@ -10,9 +10,13 @@ A message that fails stays on the queue, is retried, and lands in the work DLQ a
 Needs Postgres, ingested policies, the mock API, and OPS_WORK_QUEUE_URL and OPS_RUNS_TABLE in .env.
 AWS access comes from the worker role: AWS_PROFILE=ops-worker (see docs/runbook.md).
 
+SIGTERM finishes the current message, then exits, so scaling down never cuts a run short. Every
+poll touches a heartbeat file, which the Kubernetes probes read.
+
 Usage:
   python -m integrations.queue_worker                # keep polling
   python -m integrations.queue_worker --once         # one long poll, then exit
+  python -m integrations.queue_worker --setup        # create the checkpoint tables, then exit
   python -m integrations.queue_worker --approve REQUEST_ID --decision approve --by owner
 """
 
@@ -20,26 +24,29 @@ import argparse
 import asyncio
 import json
 import os
+import signal
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 import boto3
 from dotenv import load_dotenv
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from agent.config import db_url, mock_api_url
+from agent.config import db_url, git_state, mock_api_url
 from agent.graph import build_graph
 from agent.llm import LLMClient
 from agent.nodes import Deps
 from agent.run_history import RunHistory
 from agent.tools import MockApi
-from evals.runner import git_state
 from integrations.jira import JiraClient, Ticket
 from integrations.otel import context_from, make_provider, to_ns, trace_http
 from integrations.worker import Worker
 from retrieval.search import HybridRetriever
 
 WAIT_S = 20
+HEARTBEAT = Path(tempfile.gettempdir()) / "ops-worker-heartbeat"
 
 
 def to_ticket(request: dict) -> Ticket:
@@ -128,7 +135,26 @@ def approve(table, sfn, request_id: str, answer: dict) -> None:
     print(f"{request_id}: sent {answer['decision']} by {answer['by']}")
 
 
+async def poll_until_stopped(queue: QueueWorker, flush, stop: list, once: bool = False) -> int:
+    """Keep polling. A signal handler appends to `stop`; the current message finishes first."""
+    handled = 0
+    while not stop:
+        HEARTBEAT.touch()
+        handled += await queue.poll_once()
+        flush()
+        if once:
+            break
+    return handled
+
+
+async def setup_checkpoints() -> None:
+    async with AsyncPostgresSaver.from_conn_string(db_url()) as saver:
+        await saver.setup()
+
+
 async def serve(args) -> None:
+    stop = []
+    signal.signal(signal.SIGTERM, lambda *_: stop.append(True))
     llm = LLMClient.from_env()
     api = MockApi(mock_api_url())
     deps = Deps(llm=llm, retriever=HybridRetriever(db_url()), api=api)
@@ -138,6 +164,11 @@ async def serve(args) -> None:
     trace_http(api.client, tracer)
     history = RunHistory(db_url())
     meta = {"model": llm.model, **git_state()}
+
+    def flush():
+        provider.force_flush()
+        llm.tracer.flush()
+
     async with AsyncPostgresSaver.from_conn_string(db_url()) as saver:
         await saver.setup()
         worker = Worker(build_graph(deps, saver), deps, jira, history, meta)
@@ -148,13 +179,8 @@ async def serve(args) -> None:
             tracer,
             os.environ["OPS_WORK_QUEUE_URL"],
         )
-        while True:
-            handled = await queue.poll_once()
-            provider.force_flush()
-            llm.tracer.flush()
-            if args.once:
-                print(f"handled {handled} messages")
-                break
+        handled = await poll_until_stopped(queue, flush, stop, args.once)
+        print(f"handled {handled} messages")
     if jira:
         await jira.aclose()
     await api.aclose()
@@ -164,6 +190,7 @@ if __name__ == "__main__":
     load_dotenv(".env")
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--setup", action="store_true")
     parser.add_argument("--approve", metavar="REQUEST_ID")
     parser.add_argument("--decision", choices=["approve", "reject", "edit"])
     parser.add_argument("--by")
@@ -180,4 +207,5 @@ if __name__ == "__main__":
     else:
         # psycopg's async mode does not work with Windows' default event loop.
         loop_factory = asyncio.SelectorEventLoop if sys.platform == "win32" else None
-        asyncio.run(serve(args), loop_factory=loop_factory)
+        main = setup_checkpoints() if args.setup else serve(args)
+        asyncio.run(main, loop_factory=loop_factory)

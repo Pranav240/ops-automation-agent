@@ -30,6 +30,25 @@ jobs:
       - run: terraform -chdir=infra/aws/bootstrap init -backend=false
       - run: terraform -chdir=infra/aws/bootstrap validate
 
+  # Builds the images and deploys the chart to a throwaway kind cluster. There is no AWS here, so
+  # the workers and KEDA stay off; the setup job still proves the worker image runs.
+  kind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: ops-agent
+      - run: helm lint deploy/helm/ops-agent -f deploy/helm/ci-values.yaml
+      - run: docker build -f docker/mock-api.Dockerfile -t ops-agent-mock-api:local .
+      - run: docker build -f docker/worker.Dockerfile -t ops-agent-worker:local --build-arg GIT_COMMIT=${GITHUB_SHA::7} .
+      - run: kind load docker-image ops-agent-mock-api:local ops-agent-worker:local --name ops-agent
+      - run: helm install ops-agent deploy/helm/ops-agent -f deploy/helm/ci-values.yaml --wait --timeout 8m
+      - run: kubectl wait --for=condition=complete job/ops-agent-setup --timeout=60s
+      - run: kubectl rollout status deploy/ops-agent-mock-api --timeout=60s
+      - if: failure()
+        run: kubectl get pods -A; kubectl describe job ops-agent-setup; kubectl logs job/ops-agent-setup --all-containers
+
   # Runs the agent with real Haiku calls on a small dev subset (~$0.05). Pull requests only.
   eval-gate:
     if: github.event_name == 'pull_request'

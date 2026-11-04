@@ -16,7 +16,6 @@ import argparse
 import asyncio
 import hashlib
 import json
-import subprocess
 import sys
 import time
 import uuid
@@ -28,7 +27,7 @@ from dotenv import load_dotenv
 from langgraph.checkpoint.memory import InMemorySaver
 
 from agent.baselines import order_view, rule_router, single_call
-from agent.config import db_url
+from agent.config import db_url, git_state
 from agent.graph import build_graph, config, start
 from agent.llm import LLMClient
 from agent.nodes import Deps
@@ -54,14 +53,6 @@ def load_split(split: str, allow_test: bool = False) -> list[dict]:
     elif split != "dev":
         sys.exit(f"unknown split {split}")
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-
-
-def git_state() -> dict:
-    def git(*args):
-        return subprocess.run(["git", *args], capture_output=True, text=True, cwd=ROOT).stdout
-
-    commit = git("rev-parse", "--short", "HEAD").strip()
-    return {"commit": commit, "dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
 
 
 def fresh_api() -> MockApi:

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ops-agent
+description: Agent workers, mock API and Postgres. KEDA scales the workers on SQS queue depth.
+type: application
+version: 0.1.0

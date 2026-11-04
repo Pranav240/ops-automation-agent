@@ -1,0 +1,44 @@
+{{- if and .Values.worker.enabled .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: ops-agent-sqs
+spec:
+  {{- if eq .Values.keda.auth "irsa" }}
+  podIdentity:
+    provider: aws
+    identityOwner: workload
+  {{- else }}
+  secretTargetRef:
+    - parameter: awsAccessKeyID
+      name: ops-agent-secrets
+      key: AWS_ACCESS_KEY_ID
+    - parameter: awsSecretAccessKey
+      name: ops-agent-secrets
+      key: AWS_SECRET_ACCESS_KEY
+    - parameter: awsSessionToken
+      name: ops-agent-secrets
+      key: AWS_SESSION_TOKEN
+  {{- end }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: ops-agent-worker
+spec:
+  scaleTargetRef:
+    name: ops-agent-worker
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: ops-agent-sqs
+      metadata:
+        queueURL: {{ required "config.OPS_WORK_QUEUE_URL is required" .Values.config.OPS_WORK_QUEUE_URL | quote }}
+        queueLength: {{ .Values.keda.messagesPerWorker | quote }}
+        awsRegion: {{ .Values.config.AWS_REGION | quote }}
+        scaleOnInFlight: "true" # a message being worked on still counts, so busy workers stay
+{{- end }}

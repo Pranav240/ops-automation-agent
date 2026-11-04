@@ -1,0 +1,8 @@
+*
+!pyproject.toml
+!uv.lock
+!agent/
+!integrations/
+!retrieval/
+!mock_api/
+**/__pycache__

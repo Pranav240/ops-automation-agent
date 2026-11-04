@@ -25,13 +25,12 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from agent.config import db_url, mock_api_url
+from agent.config import db_url, git_state, mock_api_url
 from agent.graph import build_graph, config, resume, start
 from agent.llm import LLMClient
 from agent.nodes import Deps
 from agent.run_history import RunHistory, from_record
 from agent.tools import MockApi
-from evals.runner import git_state
 from integrations.jira import JiraClient, Ticket
 from retrieval.search import HybridRetriever
 
