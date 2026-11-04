@@ -7,12 +7,12 @@
 set -euo pipefail
 
 REGION=ap-south-1
-# tr: the AWS CLI on Windows ends lines with , which would corrupt the names below.
-ACCOUNT=$(aws sts get-caller-identity --query Account --output text | tr -d '')
+# tr: the AWS CLI on Windows ends lines with \r, which would corrupt the names below.
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text | tr -d '\r')
 MACHINE=arn:aws:states:$REGION:$ACCOUNT:stateMachine:ops-agent-request
 
 running=$(aws stepfunctions list-executions --region "$REGION" --state-machine-arn "$MACHINE" \
-  --status-filter RUNNING --query "executions[].executionArn" --output text 2>/dev/null | tr -d '' || true)
+  --status-filter RUNNING --query "executions[].executionArn" --output text 2>/dev/null | tr -d '\r' || true)
 for execution in $running; do
   aws stepfunctions stop-execution --region "$REGION" --execution-arn "$execution" >/dev/null
   echo "stopped $execution"
