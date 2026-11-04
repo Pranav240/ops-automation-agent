@@ -17,6 +17,19 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run pytest -q
 
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive infra/aws
+      - run: terraform -chdir=infra/aws init -backend=false
+      - run: terraform -chdir=infra/aws validate
+      - run: terraform -chdir=infra/aws/bootstrap init -backend=false
+      - run: terraform -chdir=infra/aws/bootstrap validate
+
   # Runs the agent with real Haiku calls on a small dev subset (~$0.05). Pull requests only.
   eval-gate:
     if: github.event_name == 'pull_request'
