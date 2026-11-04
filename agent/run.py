@@ -1,8 +1,8 @@
 """Run the agent on dev-set requests, and resume runs paused for approval.
 
 Needs Postgres (docker compose up -d), ingested policies (python -m retrieval.ingest) and the
-mock API (uvicorn mock_api.app:app). Only the dev split can be loaded here; the frozen test
-split is never read by this script.
+mock API (uvicorn mock_api.app:app --env-file .env). Only the dev split can be loaded here; the
+frozen test split is never read by this script.
 
 Usage:
   python -m agent.run REQ-002 REQ-004          # reset the mock API, run each request

@@ -17,7 +17,7 @@ uv run python -m retrieval.ingest   # embed the policy docs into Postgres (downl
 ## Run
 
 ```bash
-uv run uvicorn mock_api.app:app --port 8000          # mock internal API, in its own terminal
+uv run uvicorn mock_api.app:app --port 8000 --env-file .env   # mock internal API, in its own terminal
 uv run python -m agent.run REQ-002 REQ-024           # run dev-set requests end to end
 uv run python -m agent.run --resume RUN_ID --decision approve --by owner   # resume a paused run
 ```
