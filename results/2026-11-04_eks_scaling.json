@@ -1,0 +1,436 @@
+{
+  "date": "2026-11-04",
+  "commit": "650a6d1",
+  "dirty": false,
+  "cluster": "eks",
+  "model": "claude-haiku-5-5",
+  "requests": 40,
+  "runs_recorded": 40,
+  "statuses": {
+    "done": 40
+  },
+  "llm_cost_usd": 0.053121,
+  "peak_replicas": 5,
+  "peak_ready": 5,
+  "peak_queue": 38,
+  "first_scale_up_s": 26.2,
+  "reached_peak_s": 41.3,
+  "last_worker_seen_s": 219.1,
+  "back_to_zero": true,
+  "cluster_detail": {
+    "kubernetes": "1.36",
+    "nodes": "2 t3.medium on-demand, ap-south-1",
+    "keda": "2.21.0",
+    "auth": "IRSA: one role for the worker, one read-only role for KEDA"
+  },
+  "keda": {
+    "maxReplicas": 5,
+    "messagesPerWorker": 2,
+    "minReplicas": 0,
+    "cooldownPeriod_s": 60
+  },
+  "dlq_after": {
+    "work": 0,
+    "intake": 0
+  },
+  "traces": "sampled 12 of the 40 runs: all 12 had intake, work_queue, worker run and agent spans in Langfuse",
+  "scope": "pods scaled; the 2 nodes stayed fixed",
+  "findings": {
+    "unrequested_actions": [
+      {
+        "request": "SCALE-1793772115-011",
+        "order": "ORD-1012",
+        "action": "refund $120 reason lost",
+        "executed": true,
+        "approval": false,
+        "note": "same behaviour as on kind; customer asked for status only. The amount follows POL-007"
+      }
+    ]
+  },
+  "run_window": {
+    "aws_up": "11:14 IST",
+    "cluster_ready": "11:27",
+    "burst_done": "11:36",
+    "aws_gone": "11:50"
+  },
+  "destroy": {
+    "tool": "scripts/destroy.sh, first real run, no manual cleanup",
+    "destroyed": {
+      "eks": 22,
+      "main": 40,
+      "bootstrap": 2
+    },
+    "checked_empty": [
+      "eks",
+      "ec2 instances",
+      "volumes",
+      "elastic ips",
+      "vpcs",
+      "nat gateways",
+      "load balancers",
+      "ecr",
+      "oidc providers",
+      "sqs",
+      "lambda",
+      "event source mappings",
+      "step functions",
+      "dynamodb",
+      "s3",
+      "api gateway",
+      "iam roles",
+      "log groups",
+      "ssm",
+      "alarms",
+      "sns",
+      "eventbridge",
+      "budgets"
+    ],
+    "note": "the tagging API still listed the deleted event source mapping; a direct lookup found none"
+  },
+  "samples": [
+    {
+      "t_s": 0.0,
+      "sent": 1,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 5.0,
+      "sent": 5,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 10.3,
+      "sent": 11,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 10,
+      "in_flight": 1
+    },
+    {
+      "t_s": 15.3,
+      "sent": 17,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 13,
+      "in_flight": 1
+    },
+    {
+      "t_s": 21.1,
+      "sent": 24,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 4,
+      "in_flight": 1
+    },
+    {
+      "t_s": 26.2,
+      "sent": 30,
+      "replicas": 4,
+      "ready": 0,
+      "visible": 4,
+      "in_flight": 1
+    },
+    {
+      "t_s": 31.2,
+      "sent": 36,
+      "replicas": 4,
+      "ready": 0,
+      "visible": 25,
+      "in_flight": 1
+    },
+    {
+      "t_s": 36.2,
+      "sent": 40,
+      "replicas": 4,
+      "ready": 0,
+      "visible": 13,
+      "in_flight": 1
+    },
+    {
+      "t_s": 41.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 37,
+      "in_flight": 1
+    },
+    {
+      "t_s": 46.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 33,
+      "in_flight": 1
+    },
+    {
+      "t_s": 51.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 32,
+      "in_flight": 5
+    },
+    {
+      "t_s": 56.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 32,
+      "in_flight": 5
+    },
+    {
+      "t_s": 61.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 33,
+      "in_flight": 5
+    },
+    {
+      "t_s": 66.6,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 28,
+      "in_flight": 1
+    },
+    {
+      "t_s": 71.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 21,
+      "in_flight": 6
+    },
+    {
+      "t_s": 76.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 27,
+      "in_flight": 6
+    },
+    {
+      "t_s": 92.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 14,
+      "in_flight": 6
+    },
+    {
+      "t_s": 97.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 10,
+      "in_flight": 6
+    },
+    {
+      "t_s": 102.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 10,
+      "in_flight": 6
+    },
+    {
+      "t_s": 108.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 7,
+      "in_flight": 5
+    },
+    {
+      "t_s": 113.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 2,
+      "in_flight": 6
+    },
+    {
+      "t_s": 118.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 10,
+      "in_flight": 6
+    },
+    {
+      "t_s": 123.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 19,
+      "in_flight": 6
+    },
+    {
+      "t_s": 128.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 5,
+      "in_flight": 6
+    },
+    {
+      "t_s": 133.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 138.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 143.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 148.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 153.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 158.6,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 163.6,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 168.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 173.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 178.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 183.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 188.8,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 193.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 198.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 203.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 209.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 214.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 219.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 224.1,
+      "sent": 40,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    }
+  ]
+}
