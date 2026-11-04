@@ -1,0 +1,72 @@
+# Defaults run on kind. Secrets never go here: scripts/helm_values.py writes them to
+# deploy/helm/values.local.yaml, which is gitignored.
+
+images:
+  worker: ops-agent-worker:local
+  mockApi: ops-agent-mock-api:local
+  postgres: pgvector/pgvector:pg17
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  annotations: {} # on EKS: eks.amazonaws.com/role-arn
+
+worker:
+  enabled: true
+  replicas: 0 # used only when KEDA is off
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  terminationGracePeriodSeconds: 240 # longest run (180 s) plus one long poll (20 s) and a margin
+
+keda:
+  enabled: true
+  minReplicas: 0
+  maxReplicas: 5
+  messagesPerWorker: 2
+  pollingInterval: 10
+  cooldownPeriod: 60
+  auth: secret # secret on kind, irsa on EKS
+
+mockApi:
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 192Mi }
+
+postgres:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 512Mi }
+
+setup:
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
+config:
+  LLM_PROVIDER: anthropic
+  LLM_MODEL: claude-haiku-5-5
+  LLM_MAX_TOKENS_PER_REQUEST: "8000"
+  LLM_MAX_SPEND_PER_RUN_USD: "0.05"
+  LLM_MAX_ITERATIONS: "10"
+  LANGFUSE_BASE_URL: https://cloud.langfuse.com
+  POSTGRES_USER: ops
+  POSTGRES_DB: ops
+  AWS_REGION: ap-south-1
+  AWS_DEFAULT_REGION: ap-south-1
+  OPS_WORK_QUEUE_URL: ""
+  OPS_RUNS_TABLE: ops-agent-runs
+  JIRA_BASE_URL: ""
+  JIRA_EMAIL: ""
+  JIRA_PROJECT_KEY: ""
+
+# Fill these from a gitignored values file. POSTGRES_PASSWORD and SQL_READER_PASSWORD are required.
+secrets:
+  POSTGRES_PASSWORD: ""
+  SQL_READER_PASSWORD: ""
+  ANTHROPIC_API_KEY: ""
+  LANGFUSE_PUBLIC_KEY: ""
+  LANGFUSE_SECRET_KEY: ""
+  JIRA_API_TOKEN: ""
+  AWS_ACCESS_KEY_ID: ""
+  AWS_SECRET_ACCESS_KEY: ""
+  AWS_SESSION_TOKEN: ""

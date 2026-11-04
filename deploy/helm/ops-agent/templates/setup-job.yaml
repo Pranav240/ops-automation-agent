@@ -1,0 +1,35 @@
+# Runs once after install, before any worker starts, so workers never race to create tables.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ops-agent-setup
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.images.postgres }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command: ["sh", "-c", "until pg_isready -h ops-agent-postgres; do sleep 2; done"]
+          resources:
+            {{- toYaml .Values.mockApi.resources | nindent 12 }}
+      containers:
+        - name: setup
+          image: {{ .Values.images.worker }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - python -m retrieval.ingest && python -m agent.run_history setup && python -m integrations.queue_worker --setup
+          envFrom:
+            - configMapRef:
+                name: ops-agent-config
+            - secretRef:
+                name: ops-agent-secrets
+          resources:
+            {{- toYaml .Values.setup.resources | nindent 12 }}

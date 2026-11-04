@@ -162,7 +162,8 @@ resource "aws_iam_role" "worker" {
 
 data "aws_iam_policy_document" "worker" {
   statement {
-    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage"]
+    # GetQueueAttributes lets KEDA read the queue depth.
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.work.arn]
   }
   statement {

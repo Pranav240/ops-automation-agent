@@ -1,0 +1,61 @@
+# Disposable: the setup job rebuilds the tables and the data goes with the pod. Runs for a proof
+# only, so no volume is needed. A real deployment would use a managed database.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ops-agent-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ops-agent-postgres
+  template:
+    metadata:
+      labels:
+        app: ops-agent-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.images.postgres }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.config.POSTGRES_USER }}
+            - name: POSTGRES_DB
+              value: {{ .Values.config.POSTGRES_DB }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ops-agent-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ops-agent-postgres
+spec:
+  selector:
+    app: ops-agent-postgres
+  ports:
+    - port: 5432

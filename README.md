@@ -72,6 +72,13 @@ python -m integrations.submit REQ-T1 ben.okafor@example.com "Where is order ORD-
 AWS_PROFILE=ops-worker python -m integrations.queue_worker --once
 ```
 
+## Kubernetes
+
+Workers run from `docker/worker.Dockerfile` with the Helm chart in `deploy/helm/ops-agent`. KEDA
+scales them on work queue depth, from 0 to 5. A 40-request burst went 0 to 5 and back to 0 on kind
+and on EKS: see `results/2026-11-04_kind_scaling.json` and `results/2026-11-04_eks_scaling.json`.
+Steps are in [docs/runbook.md](docs/runbook.md).
+
 ## How it works
 
 - `agent/graph.py`: LangGraph graph `planner -> retriever -> tool_agent -> critic -> approval_gate -> commit`, with a Postgres checkpointer so a paused run can be resumed from another process.

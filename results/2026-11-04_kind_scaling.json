@@ -1,0 +1,515 @@
+{
+  "date": "2026-11-04",
+  "commit": "5c04f4c",
+  "dirty": false,
+  "cluster": "kind",
+  "model": "claude-haiku-5-5",
+  "requests": 40,
+  "runs_recorded": 40,
+  "statuses": {
+    "done": 39,
+    "pending_approval": 1
+  },
+  "llm_cost_usd": 0.053129,
+  "peak_replicas": 5,
+  "peak_ready": 5,
+  "peak_queue": 40,
+  "first_scale_up_s": 26.0,
+  "reached_peak_s": 56.3,
+  "last_worker_seen_s": 263.4,
+  "back_to_zero": true,
+  "image_commit": "21d8ac2 plus the uncommitted Phase 6 worker changes; the files in the image are the same at 5c04f4c",
+  "keda": {
+    "maxReplicas": 5,
+    "messagesPerWorker": 2,
+    "minReplicas": 0,
+    "cooldownPeriod_s": 60
+  },
+  "dlq_after": {
+    "work": 0,
+    "intake": 0
+  },
+  "findings": {
+    "traces": "the 40 burst runs have no Langfuse traces: the chart used the default Langfuse host, not the project's us.cloud.langfuse.com. Costs came from Postgres. Fixed in scripts/kind_values.py and proved by one more request",
+    "trace_check": {
+      "request": "TRACE-CHECK-1",
+      "cost_usd": 0.0011883,
+      "run_id": "06fcd5538bd1f12dd77bc38ae992af31",
+      "trace_id": "ca04424e35e595ca140e8eca4587b529",
+      "spans": [
+        "anthropic.messages.create",
+        "approval_gate",
+        "commit",
+        "critic",
+        "intake",
+        "mock_api GET /orders/ORD-1001",
+        "planner",
+        "retriever",
+        "tool_agent",
+        "work_queue",
+        "worker run"
+      ]
+    },
+    "unrequested_actions": [
+      {
+        "request": "SCALE-1793768752-011",
+        "order": "ORD-1012",
+        "action": "refund $120 reason lost",
+        "executed": true,
+        "approval": false,
+        "note": "customer asked for status only. POL-007 treats this order as lost, so the amount follows policy"
+      },
+      {
+        "request": "SCALE-1793768752-032",
+        "order": "ORD-1033",
+        "action": "refund $720 reason lost",
+        "executed": false,
+        "approval": "paused, over $500. Never approved; ended with the stack",
+        "note": "same pattern; the approval gate held"
+      },
+      {
+        "request": "SCALE-1793768752-033",
+        "order": "ORD-1034",
+        "action": "close ticket",
+        "executed": true,
+        "approval": false,
+        "note": "harmless, status question answered"
+      }
+    ],
+    "statuses_note": "statuses recorded as done 39, pending_approval 1"
+  },
+  "samples": [
+    {
+      "t_s": 0.0,
+      "sent": 1,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 5.0,
+      "sent": 7,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 7,
+      "in_flight": 0
+    },
+    {
+      "t_s": 10.2,
+      "sent": 15,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 15,
+      "in_flight": 0
+    },
+    {
+      "t_s": 15.4,
+      "sent": 23,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 20.6,
+      "sent": 31,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 7,
+      "in_flight": 0
+    },
+    {
+      "t_s": 26.0,
+      "sent": 39,
+      "replicas": 1,
+      "ready": 0,
+      "visible": 31,
+      "in_flight": 0
+    },
+    {
+      "t_s": 31.1,
+      "sent": 40,
+      "replicas": 1,
+      "ready": 0,
+      "visible": 35,
+      "in_flight": 0
+    },
+    {
+      "t_s": 36.2,
+      "sent": 40,
+      "replicas": 1,
+      "ready": 1,
+      "visible": 36,
+      "in_flight": 0
+    },
+    {
+      "t_s": 41.2,
+      "sent": 40,
+      "replicas": 4,
+      "ready": 1,
+      "visible": 39,
+      "in_flight": 1
+    },
+    {
+      "t_s": 46.3,
+      "sent": 40,
+      "replicas": 4,
+      "ready": 1,
+      "visible": 23,
+      "in_flight": 0
+    },
+    {
+      "t_s": 51.3,
+      "sent": 40,
+      "replicas": 4,
+      "ready": 1,
+      "visible": 38,
+      "in_flight": 1
+    },
+    {
+      "t_s": 56.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 34,
+      "in_flight": 4
+    },
+    {
+      "t_s": 61.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 35,
+      "in_flight": 4
+    },
+    {
+      "t_s": 66.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 38,
+      "in_flight": 1
+    },
+    {
+      "t_s": 71.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 4,
+      "visible": 31,
+      "in_flight": 4
+    },
+    {
+      "t_s": 76.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 34,
+      "in_flight": 4
+    },
+    {
+      "t_s": 81.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 39,
+      "in_flight": 0
+    },
+    {
+      "t_s": 86.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 31,
+      "in_flight": 4
+    },
+    {
+      "t_s": 91.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 26,
+      "in_flight": 5
+    },
+    {
+      "t_s": 96.6,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 29,
+      "in_flight": 3
+    },
+    {
+      "t_s": 101.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 30,
+      "in_flight": 5
+    },
+    {
+      "t_s": 106.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 26,
+      "in_flight": 5
+    },
+    {
+      "t_s": 111.8,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 21,
+      "in_flight": 5
+    },
+    {
+      "t_s": 116.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 21,
+      "in_flight": 5
+    },
+    {
+      "t_s": 122.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 17,
+      "in_flight": 5
+    },
+    {
+      "t_s": 127.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 30,
+      "in_flight": 5
+    },
+    {
+      "t_s": 132.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 25,
+      "in_flight": 5
+    },
+    {
+      "t_s": 137.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 17,
+      "in_flight": 5
+    },
+    {
+      "t_s": 142.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 7,
+      "in_flight": 5
+    },
+    {
+      "t_s": 147.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 7,
+      "in_flight": 5
+    },
+    {
+      "t_s": 152.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 6,
+      "in_flight": 4
+    },
+    {
+      "t_s": 157.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 4,
+      "in_flight": 5
+    },
+    {
+      "t_s": 162.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 11,
+      "in_flight": 5
+    },
+    {
+      "t_s": 167.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 4,
+      "in_flight": 5
+    },
+    {
+      "t_s": 172.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 4,
+      "in_flight": 5
+    },
+    {
+      "t_s": 177.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 4
+    },
+    {
+      "t_s": 182.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 1,
+      "in_flight": 4
+    },
+    {
+      "t_s": 187.5,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 192.6,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 4
+    },
+    {
+      "t_s": 197.7,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 1
+    },
+    {
+      "t_s": 202.8,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 207.8,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 212.9,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 218.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 223.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 228.0,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 233.1,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 238.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 243.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 248.2,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 253.3,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 258.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 263.4,
+      "sent": 40,
+      "replicas": 5,
+      "ready": 5,
+      "visible": 0,
+      "in_flight": 0
+    },
+    {
+      "t_s": 268.5,
+      "sent": 40,
+      "replicas": 0,
+      "ready": 0,
+      "visible": 0,
+      "in_flight": 0
+    }
+  ]
+}

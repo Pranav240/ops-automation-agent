@@ -1,0 +1,9 @@
+# Used by the kind job in CI. There is no AWS there, so the workers and KEDA stay off. The test
+# passwords exist only inside the throwaway cluster.
+worker:
+  enabled: false
+keda:
+  enabled: false
+secrets:
+  POSTGRES_PASSWORD: ci-only
+  SQL_READER_PASSWORD: ci-only

@@ -17,11 +17,19 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
+from agent.config import git_state
 from agent.llm import BedrockProvider, LLMClient
 from agent.llm.pricing import cost_usd
 from integrations import submit
 from integrations.otel import context_from, to_ns, trace_http
-from integrations.queue_worker import QueueWorker, approve, summary, to_ticket
+from integrations.queue_worker import (
+    HEARTBEAT,
+    QueueWorker,
+    approve,
+    poll_until_stopped,
+    summary,
+    to_ticket,
+)
 from tests.test_agent import ALICE, FARID, final, lookup, plan, refund, review, written_actions
 from tests.test_jira import setup as worker_setup
 
@@ -313,6 +321,31 @@ def test_risky_run_waits_then_resumes_after_approval():
     )
     assert len(written_actions()) == 1 and written_actions()[0]["approved_by"] == "owner"
     assert queue.sqs.deleted == ["h1", "h2", "h3"]
+
+
+def test_stop_signal_ends_the_loop_after_the_current_message(tmp_path):
+    _, _, queue, _ = queue_setup(small_refund(), [run_message(), run_message()])
+    stop, flushed = [], []
+
+    def flush():  # stands in for a SIGTERM that arrives during the first message
+        flushed.append(True)
+        stop.append(True)
+
+    HEARTBEAT.unlink(missing_ok=True)
+    assert asyncio.run(poll_until_stopped(queue, flush, stop)) == 1
+    assert flushed == [True] and queue.sqs.deleted == ["h1"] and len(queue.sqs.messages) == 1
+    assert HEARTBEAT.exists()
+
+
+def test_stopped_worker_takes_no_message():
+    _, _, queue, _ = queue_setup([], [run_message()])
+    assert asyncio.run(poll_until_stopped(queue, lambda: None, [True])) == 0
+    assert len(queue.sqs.messages) == 1
+
+
+def test_git_commit_setting_is_used_in_images(monkeypatch):
+    monkeypatch.setenv("GIT_COMMIT", "abc1234")
+    assert git_state() == {"commit": "abc1234", "dirty": False}
 
 
 def test_spans_share_the_trace_and_cover_the_queue():

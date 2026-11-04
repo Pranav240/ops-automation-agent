@@ -15,3 +15,6 @@ dist/
 *.tfvars
 !*.tfvars.example
 infra/aws/.build/
+
+# Local Helm values with secrets
+deploy/helm/values.local.yaml
