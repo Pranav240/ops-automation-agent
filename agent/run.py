@@ -13,6 +13,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from datetime import date
@@ -86,7 +87,8 @@ async def main(args) -> None:
                 answer["args"] = json.loads(args.args)
             show(await resume(graph, args.resume, answer), llm.tracer)
         for row in load_dev(args.ids):
-            await api.client.post("/reset")
+            admin = {"Authorization": f"Bearer {os.getenv('MOCK_API_ADMIN_TOKEN', '')}"}
+            await api.client.post("/reset", headers=admin)
             print(f"\n== {row['id']} ({row['category']}): {row['request_text']}")
             out = await start(graph, row)
             show(out, llm.tracer)

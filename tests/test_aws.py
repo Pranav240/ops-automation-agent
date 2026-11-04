@@ -21,11 +21,11 @@ from agent.config import git_state
 from agent.llm import BedrockProvider, LLMClient
 from agent.llm.pricing import cost_usd
 from integrations import submit
+from integrations.approval import NotWaiting, approve
 from integrations.otel import context_from, to_ns, trace_http
 from integrations.queue_worker import (
     HEARTBEAT,
     QueueWorker,
-    approve,
     poll_until_stopped,
     summary,
     to_ticket,
@@ -403,7 +403,7 @@ def test_approve_sends_the_stored_token():
 def test_approve_refuses_a_request_that_is_not_waiting():
     table = FakeTable()
     table.items["REQ-1"] = {"request_id": "REQ-1"}
-    with pytest.raises(SystemExit):
+    with pytest.raises(NotWaiting):
         approve(table, FakeSfn(), "REQ-1", {"decision": "approve", "by": "owner"})
 
 

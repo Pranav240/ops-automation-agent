@@ -13,6 +13,9 @@ AWS access comes from the worker role: AWS_PROFILE=ops-worker (see docs/runbook.
 SIGTERM finishes the current message, then exits, so scaling down never cuts a run short. Every
 poll touches a heartbeat file, which the Kubernetes probes read.
 
+The worker never creates tables: run --setup first, as the database owner. In a cluster the setup
+job does this, and the worker connects as ops_worker.
+
 Usage:
   python -m integrations.queue_worker                # keep polling
   python -m integrations.queue_worker --once         # one long poll, then exit
@@ -40,6 +43,7 @@ from agent.llm import LLMClient
 from agent.nodes import Deps
 from agent.run_history import RunHistory
 from agent.tools import MockApi
+from integrations.approval import NotWaiting, approve
 from integrations.jira import JiraClient, Ticket
 from integrations.otel import context_from, make_provider, to_ns, trace_http
 from integrations.worker import Worker
@@ -127,14 +131,6 @@ class QueueWorker:
         return len(messages)
 
 
-def approve(table, sfn, request_id: str, answer: dict) -> None:
-    item = table.get_item(Key={"request_id": request_id}).get("Item")
-    if not item or "approval_token" not in item:
-        raise SystemExit(f"{request_id} is not waiting for approval")
-    sfn.send_task_success(taskToken=item["approval_token"], output=json.dumps(answer))
-    print(f"{request_id}: sent {answer['decision']} by {answer['by']}")
-
-
 async def poll_until_stopped(queue: QueueWorker, flush, stop: list, once: bool = False) -> int:
     """Keep polling. A signal handler appends to `stop`; the current message finishes first."""
     handled = 0
@@ -170,7 +166,6 @@ async def serve(args) -> None:
         llm.tracer.flush()
 
     async with AsyncPostgresSaver.from_conn_string(db_url()) as saver:
-        await saver.setup()
         worker = Worker(build_graph(deps, saver), deps, jira, history, meta)
         queue = QueueWorker(
             worker,
@@ -203,7 +198,11 @@ if __name__ == "__main__":
         if args.args:
             answer["args"] = json.loads(args.args)
         table = boto3.resource("dynamodb").Table(os.environ["OPS_RUNS_TABLE"])
-        approve(table, boto3.client("stepfunctions"), args.approve, answer)
+        try:
+            approve(table, boto3.client("stepfunctions"), args.approve, answer)
+        except NotWaiting as e:
+            raise SystemExit(str(e)) from None
+        print(f"{args.approve}: sent {answer['decision']} by {answer['by']}")
     else:
         # psycopg's async mode does not work with Windows' default event loop.
         loop_factory = asyncio.SelectorEventLoop if sys.platform == "win32" else None

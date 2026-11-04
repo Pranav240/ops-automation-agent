@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import secrets
 import sys
 import time
 import uuid
@@ -56,7 +57,13 @@ def load_split(split: str, allow_test: bool = False) -> list[dict]:
 
 
 def fresh_api() -> MockApi:
-    return MockApi("http://mock", transport=httpx.ASGITransport(app=create_app()))
+    tokens = {scope: secrets.token_hex(8) for scope in ("read", "write", "admin")}
+    return MockApi(
+        "http://mock",
+        transport=httpx.ASGITransport(app=create_app(tokens)),
+        read_token=tokens["read"],
+        write_token=tokens["write"],
+    )
 
 
 def base_record(row: dict) -> dict:
