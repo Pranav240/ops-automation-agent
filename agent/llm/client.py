@@ -7,8 +7,10 @@ from dataclasses import dataclass, field
 
 from agent.llm.budget import Budget, BudgetExceeded, estimate_tokens
 from agent.llm.pricing import cost_usd
-from agent.llm.providers import AnthropicProvider, Provider, ToolCall
+from agent.llm.providers import AnthropicProvider, BedrockProvider, Provider, ToolCall
 from agent.llm.tracing import LangfuseTracer, NullTracer, Tracer
+
+PROVIDERS = {"anthropic": AnthropicProvider, "bedrock": BedrockProvider}
 
 
 @dataclass
@@ -127,7 +129,7 @@ class LLMClient:
     def from_env(cls, provider: Provider | None = None) -> "LLMClient":
         tracing_on = bool(os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"))
         return cls(
-            provider=provider or AnthropicProvider(),
+            provider=provider or PROVIDERS[os.getenv("LLM_PROVIDER", "anthropic")](),
             tracer=LangfuseTracer() if tracing_on else NullTracer(),
             model=os.getenv("LLM_MODEL", "claude-haiku-5-5"),
             max_tokens_per_request=int(os.getenv("LLM_MAX_TOKENS_PER_REQUEST", "8000")),

@@ -76,6 +76,23 @@ class AnthropicProvider:
         )
 
 
+class BedrockProvider(AnthropicProvider):
+    """Claude on Amazon Bedrock: the Messages API at bedrock-mantle, signed with AWS credentials.
+
+    Same request shape as the direct API, so only the client differs. The region and credentials
+    come from the standard AWS settings. ap-south-1 reaches Claude through the global endpoint.
+    """
+
+    name = "bedrock"
+
+    def __init__(self, timeout_s: float = 60.0, max_retries: int = 3):
+        import anthropic
+
+        self.client = anthropic.AsyncAnthropicBedrockMantle(
+            timeout=timeout_s, max_retries=max_retries
+        )
+
+
 @dataclass
 class FakeProvider:
     """Scripted provider for tests. Replies are returned in order.
