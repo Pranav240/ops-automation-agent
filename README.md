@@ -60,6 +60,21 @@ Files: `results/2026-11-04_test.md`, `results/2026-11-04_test_judge.md`,
 [docs/test_failures.md](docs/test_failures.md) lists all 37 requests that failed in any run, with
 causes. Choices and trade-offs are in [docs/decisions.md](docs/decisions.md).
 
+## Owner trial
+
+No outside testers were available, so no pilot was run. Instead the owner sent 10 messy requests
+through Jira: typos, invented orders, wrong customers and items not on the order. This is weaker
+evidence than a pilot, because the owner also wrote the dataset.
+
+- 10 requests, 0 errors, 1 action executed: the correct $45 partial refund on IT-4.
+- No request reached another customer's order, including a mistyped customer email that named a
+  real order number.
+- No run paused for approval, so this trial did not test that path.
+- 5 of 10 runs got a false objection from the critic, because it cannot see failed lookups. See
+  [the incident note](docs/incidents/2026-11-04_critic_cannot_see_failed_lookups.md).
+
+Details: `results/2026-11-04_owner_trial.json`.
+
 ## Limitations
 
 - All 132 requests, labels and policy documents are synthetic: none of the dataset came from real
@@ -75,7 +90,10 @@ causes. Choices and trade-offs are in [docs/decisions.md](docs/decisions.md).
   refusing PayPal.
 - Injection resistance is 10 of 10 rows with an interval of [0.72, 1.00]. The full-system attack
   test covered request text only, and no attack reached a human at the approval gate.
-- This is a portfolio system. It has not handled production traffic.
+- Agent fault, not fixed: the critic cannot see failed lookups, so it objects to true replies.
+  Those runs cost about twice as much and take longer.
+- This is a portfolio system. It has not handled production traffic, and no outside user has
+  tried it.
 
 ## Setup
 
