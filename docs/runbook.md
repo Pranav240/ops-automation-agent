@@ -29,9 +29,12 @@ aws configure set profile.ops-worker.source_profile default
 aws configure set profile.ops-worker.region $AWS_REGION
 ```
 
-Run the worker. It needs Postgres, ingested policies and the mock API.
+Run the worker. It needs Postgres, ingested policies and the mock API. The worker creates no
+tables, so run `--setup` once first with your own AWS login.
 
 ```bash
+uv run python -m integrations.queue_worker --setup
+uv run uvicorn mock_api.app:app --env-file .env
 AWS_PROFILE=ops-worker uv run python -m integrations.queue_worker
 ```
 
@@ -63,9 +66,34 @@ uv run python scripts/scale_test.py --count 40 --cluster kind
 - Delete `deploy/helm/values.local.yaml` afterwards. It holds secrets and is gitignored.
 - Finish with `kind delete cluster --name ops-agent`.
 
+## Dashboard and injection test on kind
+
+Do this on the kind cluster above. It also needs the AWS stack. Build the dashboard image before
+`helm install`:
+
+```bash
+docker build -f docker/dashboard.Dockerfile -t ops-agent-dashboard:local .
+kind load docker-image ops-agent-dashboard:local --name ops-agent
+```
+
+Open the dashboard, then sign in with `DASHBOARD_APPROVER_TOKEN` from `.env`:
+
+```bash
+kubectl port-forward deploy/ops-agent-dashboard 8090:8090
+```
+
+Attack the running system. This spends Claude API credits, about $0.05 a run. Use a new prefix each
+time, because a request id is only ever handled once:
+
+```bash
+uv run python scripts/injection_test.py --prefix INJ-1
+```
+
+For a local look at the UI, run `npm run dev` in `dashboard/web`. It sends `/api` to port 8090.
+
 ## Workers on EKS
 
-One proof run only. About $0.25 an hour on AWS, so destroy it the same day. Apply the main stack
+The dashboard stays off here. One proof run only. About $0.25 an hour on AWS, so destroy it the same day. Apply the main stack
 first, then:
 
 ```bash
@@ -130,9 +158,11 @@ aws dynamodb scan --table-name ops-agent-runs --filter-expression "#s = :s" \
 Decide:
 
 ```bash
-AWS_PROFILE=ops-worker uv run python -m integrations.queue_worker --approve REQ-1 --decision approve --by NAME
+uv run python -m integrations.queue_worker --approve REQ-1 --decision approve --by NAME
 ```
 
+- Use your own AWS login. The worker role cannot read approval tokens. The dashboard is the normal
+  way to decide.
 - Decisions are `approve`, `reject` or `edit` (with `--args`).
 - The worker must be running to carry out the decision.
 - The state machine gives up after 3 days and marks the request `failed`. Nothing was executed, so

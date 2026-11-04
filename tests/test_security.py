@@ -78,10 +78,10 @@ def test_database_roles_never_get_more_than_their_list():
         assert "DELETE" not in joined and "sql_query_log" not in joined and "ALL" not in joined
 
 
-def rendered() -> list[dict]:
+def rendered(*extra: str) -> list[dict]:
     command = ["helm", "template", "ops-agent", str(CHART), "-f", str(CI_VALUES)]
     command += ["--set", "worker.enabled=true,config.OPS_WORK_QUEUE_URL=https://q"]
-    command += ["--set", "secrets.ANTHROPIC_API_KEY=key,secrets.AWS_ACCESS_KEY_ID=aws"]
+    command += ["--set", "secrets.ANTHROPIC_API_KEY=key,secrets.AWS_ACCESS_KEY_ID=aws", *extra]
     out = subprocess.run(command, capture_output=True, text=True, check=True).stdout
     return [doc for doc in yaml.safe_load_all(out) if doc]
 
@@ -138,11 +138,11 @@ def test_worker_and_dashboard_connect_with_their_own_database_roles():
 
 
 @needs_helm
-def test_worker_password_is_not_the_owner_password():
-    secrets = {d["metadata"]["name"]: d for d in rendered() if d["kind"] == "Secret"}
-    # ci-values uses one password everywhere, so compare with a run that sets different ones.
-    worker = secrets["ops-agent-worker-secrets"]["stringData"]
-    assert "SQL_READER_PASSWORD" not in worker and "MOCK_API_ADMIN_TOKEN" not in worker
+def test_worker_holds_its_own_database_password_not_the_owners():
+    extra = ("--set", "secrets.POSTGRES_PASSWORD=owner,secrets.WORKER_DB_PASSWORD=worker")
+    secrets = {d["metadata"]["name"]: d for d in rendered(*extra) if d["kind"] == "Secret"}
+    assert secrets["ops-agent-worker-secrets"]["stringData"]["POSTGRES_PASSWORD"] == "worker"
+    assert secrets["ops-agent-postgres-secrets"]["stringData"]["POSTGRES_PASSWORD"] == "owner"
 
 
 @needs_helm

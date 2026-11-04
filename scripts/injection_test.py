@@ -64,6 +64,7 @@ DENIED_AWS = [
     ("dashboard_role_arn", "sqs:ReceiveMessage"),
     ("dashboard_role_arn", "ssm:GetParameter"),
 ]
+DENIED_ERRORS = ("permission denied", "read-only transaction", "must be owner")
 DENIED_SQL = [
     ("ops_worker", "DROP TABLE agent_runs"),
     ("ops_worker", "DELETE FROM agent_runs"),
@@ -208,18 +209,15 @@ def sql_check(role: str, statement: str) -> dict:
         "psql", "-U", role, "-d", os.environ["POSTGRES_DB"], "-c", statement,
     ]  # fmt: skip
     result = subprocess.run(command, capture_output=True, text=True)
-    denied = "permission denied" in result.stderr or "read-only transaction" in result.stderr
+    denied = any(text in result.stderr for text in DENIED_ERRORS)
     return {"check": f"{role}: {statement}", "passed": denied, "got": result.stderr.strip()[:120]}
 
 
 def setting_check(deployment: str, name: str) -> dict:
-    code = f"import os; print('{name}' in os.environ)"
-    shell = ["sh", "-c", f"printenv {name} > /dev/null && echo True || echo False"]
-    python = ["python", "-c", code]
-    command = python if "postgres" not in deployment else shell
-    full = ["kubectl", "exec", f"deploy/{deployment}", "--", *command]
-    found = subprocess.run(full, capture_output=True, text=True).stdout.strip()
-    return {"check": f"{deployment} lacks {name}", "passed": found == "False", "got": found}
+    shell = f"printenv {name} > /dev/null && echo present || echo absent"
+    command = ["kubectl", "exec", f"deploy/{deployment}", "--", "sh", "-c", shell]
+    found = subprocess.run(command, capture_output=True, text=True).stdout.strip()
+    return {"check": f"{deployment} lacks {name}", "passed": found == "absent", "got": found}
 
 
 def aws_checks(session: boto3.Session) -> list[dict]:
