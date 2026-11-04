@@ -169,6 +169,17 @@ def reader_runs(conninfo, query):
         return conn.execute(query).fetchall()
 
 
+def test_update_changes_some_columns_of_an_existing_run(reader):
+    from agent.config import db_url
+    from agent.run_history import RunHistory
+
+    RunHistory(db_url()).update("test-row", status="done", approved_by="owner", executed=True)
+    rows = reader_runs(
+        reader, "SELECT status, approved_by, executed FROM run_history WHERE run_id = 'test-row'"
+    )
+    assert rows == [("done", "owner", True)]
+
+
 def test_reader_can_select_run_history(reader):
     assert reader_runs(reader, "SELECT count(*) FROM run_history WHERE run_id = 'test-row'") == [
         (1,)

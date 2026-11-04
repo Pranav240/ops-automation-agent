@@ -140,7 +140,7 @@ class RunHistory:
         self.conninfo = conninfo
 
     def record(self, row: dict) -> None:
-        """Insert a run, or update the given columns when the run_id exists (after a resume)."""
+        """Insert a full run row, or replace the row when the run_id exists."""
         row = {c: row[c] for c in COLUMNS if c in row and (c != "run_date" or row[c])}
         cols = list(row)
         query = sql.SQL(
@@ -155,6 +155,17 @@ class RunHistory:
         )
         with psycopg.connect(self.conninfo) as conn:
             conn.execute(query, row)
+
+    def update(self, run_id: str, **fields) -> None:
+        """Change some columns of an existing run (after an approval decision)."""
+        sets = sql.SQL(", ").join(
+            sql.SQL("{c} = {v}").format(c=sql.Identifier(c), v=sql.Placeholder(c)) for c in fields
+        )
+        query = sql.SQL("UPDATE agent_runs SET {sets} WHERE run_id = {run_id}").format(
+            sets=sets, run_id=sql.Placeholder("run_id")
+        )
+        with psycopg.connect(self.conninfo) as conn:
+            conn.execute(query, {**fields, "run_id": run_id})
 
     def ticket_for(self, run_id: str) -> str | None:
         with psycopg.connect(self.conninfo) as conn:

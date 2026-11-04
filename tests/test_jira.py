@@ -87,6 +87,9 @@ class FakeHistory:
     def record(self, row):
         self.rows.append(row)
 
+    def update(self, run_id, **fields):
+        self.rows.append({"run_id": run_id, **fields})
+
     def ticket_for(self, run_id):
         return next((r["ticket_key"] for r in self.rows if r["run_id"] == run_id), None)
 
@@ -147,7 +150,7 @@ def test_large_refund_gets_internal_note_then_reply_after_approval():
     assert worker.history.rows[0]["status"] == "pending_approval"
 
     asyncio.run(worker.resume(out["run_id"], {"decision": "approve", "by": "owner"}))
-    assert issue["comments"][1] == ("Done.", True)
+    assert issue["comments"][1] == ("Done.\n\nUpdate: our team has approved this.", True)
     assert issue["status"] == RESOLVED
     assert written_actions()[0]["approved_by"] == "owner"
     assert worker.history.rows[1] == {
@@ -155,6 +158,8 @@ def test_large_refund_gets_internal_note_then_reply_after_approval():
         "status": "done",
         "approved_by": "owner",
         "executed": True,
+        "amount": 649.0,
+        "reason": "damaged_or_defective",
     }
 
 
@@ -178,3 +183,7 @@ def test_plan_update_for_each_outcome():
     assert not plan_update(rejected).public and plan_update(rejected).status is None
     blocked = {**done, "status": "blocked", "api_result": None}
     assert not plan_update(blocked).public
+    approved = {**done, "approval": {"decision": "approve", "by": "owner"}}
+    assert plan_update(approved).comment.endswith("our team has approved this.")
+    edited = {**done, "approval": {"decision": "edit"}, "args": {"amount": 100.0}}
+    assert plan_update(edited).comment.endswith("The final amount is $100.00.")

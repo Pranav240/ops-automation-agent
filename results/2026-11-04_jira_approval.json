@@ -1,0 +1,26 @@
+{
+ "check": "Approval path on real Jira: pause, internal note, approve, public reply",
+ "date": "2026-11-04",
+ "model": "claude-haiku-5-5",
+ "commit": "a1ac557",
+ "dataset_request": "REQ-018 (dev)",
+ "ticket": "IT-2",
+ "run_id": "3bfe59e4c22c45cbaaeadf386fc2a2a0",
+ "action": "refund",
+ "amount": 720.0,
+ "expected_action": "refund",
+ "expected_amount": 720.0,
+ "paused_with_internal_note": true,
+ "status_while_paused": "Pending",
+ "approved_by": "owner",
+ "executed_after_approval": true,
+ "public_comment_posted": true,
+ "final_status": "Resolved",
+ "llm_calls": 5,
+ "cost_usd": 0.0020888,
+ "latency_s": 16.457,
+ "issues_found": [
+  "RunHistory.record crashed on the partial row after approval, so agent_runs kept status pending_approval; fixed with RunHistory.update and the IT-2 row was corrected by hand",
+  "The public reply was the pre-approval draft and still said approval was needed; approved replies now end with an update line (not re-tested on real Jira)"
+ ]
+}

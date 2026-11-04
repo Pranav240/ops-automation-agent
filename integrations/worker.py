@@ -49,6 +49,18 @@ class Update:
     status: str | None
 
 
+def approval_note(out: dict) -> str:
+    """The draft reply was written before the decision, so say what the human decided."""
+    approval = out.get("approval", {})
+    if approval.get("decision") == "approve":
+        return "\n\nUpdate: our team has approved this."
+    if approval.get("decision") == "edit":
+        amount = out["args"].get("amount")
+        final = f" The final amount is ${amount:.2f}." if amount else ""
+        return f"\n\nUpdate: our team approved this with changes.{final}"
+    return ""
+
+
 def plan_update(out: dict) -> Update:
     """What to post to Jira for an agent result (see agent.graph.start / resume)."""
     run_id, status = out["run_id"], out["status"]
@@ -70,7 +82,7 @@ def plan_update(out: dict) -> Update:
             next_status = ESCALATED
         else:
             next_status = RESOLVED
-        return Update(out["reply"], public=True, status=next_status)
+        return Update(out["reply"] + approval_note(out), public=True, status=next_status)
     if status == "rejected":
         by = out["approval"].get("by")
         return Update(
@@ -153,14 +165,15 @@ class Worker:
             raise SystemExit(f"run {run_id} has no Jira ticket in agent_runs")
         out = await resume(self.graph, run_id, answer)
         await self.post(key, plan_update(out))
+        args = out.get("args") or {}
         await asyncio.to_thread(
-            self.history.record,
-            {
-                "run_id": run_id,
-                "status": out["status"],
-                "approved_by": answer["by"],
-                "executed": out.get("executed", False),
-            },
+            self.history.update,
+            run_id,
+            status=out["status"],
+            approved_by=answer["by"],
+            executed=out.get("executed", False),
+            amount=args.get("amount"),
+            reason=args.get("reason"),
         )
         print(f"{key}: {out['status']} after {answer['decision']} by {answer['by']}")
         return out
