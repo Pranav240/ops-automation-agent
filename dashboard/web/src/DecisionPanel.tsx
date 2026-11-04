@@ -26,7 +26,7 @@ export function DecisionPanel({ token, scope, runId, pending, sent, onSent }: Pr
   const [changes, setChanges] = useState<Args>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const fields = EDITABLE[pending.action] ?? [];
+  const fields = EDITABLE[pending.action ?? ""] ?? [];
 
   async function decide(decision: Decision) {
     setBusy(true);
@@ -52,7 +52,7 @@ export function DecisionPanel({ token, scope, runId, pending, sent, onSent }: Pr
       </ul>
       <dl>
         <dt>Proposed action</dt>
-        <dd>{pending.action}</dd>
+        <dd>{pending.action ?? "None, reply only"}</dd>
         <dt>Arguments</dt>
         <dd>
           <code>{JSON.stringify(pending.args)}</code>

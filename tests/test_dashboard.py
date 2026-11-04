@@ -235,6 +235,13 @@ def test_trace_reads_a_pause_saved_as_a_plain_dict():
     assert build_trace(checkpoints)["pending"] == PENDING
 
 
+def test_reply_with_no_action_cannot_be_edited():
+    pending = {**PENDING, "action": None, "args": {}}
+    client = TestClient(create_app(FakeStore(pending=pending), lambda *_: None, TOKENS))
+    body = {"decision": "edit", "args": {"amount": 1}}
+    assert client.post("/api/runs/r1/decision", json=body, headers=APPROVER).status_code == 422
+
+
 def test_trace_of_a_finished_run_has_no_pending_decision():
     outcome = {"status": "done", "executed": True}
     checkpoints = [

@@ -208,6 +208,17 @@ def test_approval_reasons():
     assert nodes.approval_reasons({"proposal": fine, "critique": ok}) == []
 
 
+def test_reply_with_no_action_pauses_only_for_a_critic_objection():
+    reply_only = {"action": None, "args": {}, "confidence": 0.1}
+    assert nodes.approval_reasons({"proposal": reply_only, "critique": review_ok()}) == []
+    objected = {"proposal": reply_only, "critique": {"ok": False, "issues": ["x"]}}
+    assert nodes.approval_reasons(objected) == [nodes.CRITIC_REASON]
+
+
+def review_ok():
+    return {"ok": True, "issues": []}
+
+
 # ---------------------------------------------------------------- full graph
 
 
@@ -290,6 +301,81 @@ def test_second_critic_rejection_goes_to_human():
     out = run_graph(make_deps(replies))
     assert out["status"] == "pending_approval"
     assert "critic" in out["approval_request"]["reasons"][-1]
+
+
+def false_handoff_replies():
+    claim = "I've passed this to our team."
+    return [
+        plan(),
+        final(reply=claim),
+        review(False, ["no escalation was made"]),
+        final(reply=claim),
+        review(False, ["still no escalation"]),
+    ]
+
+
+def test_reply_the_critic_still_rejects_is_not_sent_without_a_human():
+    out = run_graph(make_deps(false_handoff_replies()))
+    assert out["status"] == "pending_approval"
+    assert out["approval_request"]["action"] is None
+    assert out["approval_request"]["reasons"] == [nodes.CRITIC_REASON]
+
+
+def test_rejected_reply_is_recorded_as_rejected():
+    deps = make_deps(false_handoff_replies())
+    out = run_graph(deps, answer={"decision": "reject", "by": "owner"})
+    assert out["status"] == "rejected" and not out["executed"]
+    assert written_actions() == []
+
+
+def test_approved_reply_finishes_with_no_action():
+    deps = make_deps(false_handoff_replies())
+    out = run_graph(deps, answer={"decision": "approve", "by": "owner"})
+    assert out["status"] == "done" and out["sent_to_approval"]
+    assert written_actions() == []
+
+
+def test_reply_with_no_action_cannot_be_edited():
+    deps = make_deps(false_handoff_replies())
+    with pytest.raises(AgentError, match="nothing to edit"):
+        run_graph(deps, answer={"decision": "edit", "by": "owner", "args": {}})
+
+
+def test_failed_lookups_reach_the_critic():
+    replies = [plan(), lookup("ORD-9999"), lookup("1234"), final(kind="clarification"), review()]
+    deps = make_deps(replies)
+    out = run_graph(deps)
+    critic_prompt = deps.llm.provider.calls[-1]["messages"][0]["content"]
+    assert out["failed_lookups"] == ["ORD-9999", "1234"]
+    assert 'found no order for this customer: ["ORD-9999", "1234"]' in critic_prompt
+    assert "Orders found for this customer: {}" in critic_prompt
+
+
+def test_another_customers_order_counts_as_a_failed_lookup():
+    deps = make_deps([plan(), lookup("ORD-1011"), final(kind="clarification"), review()])
+    out = run_graph(deps)
+    assert out["failed_lookups"] == ["ORD-1011"] and out["looked_up"] == []
+
+
+def test_empty_reply_gets_another_turn():
+    replies = [
+        plan(),
+        final(reply=""),
+        lookup("ORD-1001"),
+        refund("ORD-1001", 65.0),
+        final(),
+        review(),
+    ]
+    deps = make_deps(replies)
+    out = run_graph(deps)
+    assert out["reply"] == "Done." and out["executed"]
+    assert written_actions()[0]["action"] == "refund"
+    assert nodes.EMPTY_REPLY_NOTE in str(deps.llm.provider.calls[2]["messages"])
+
+
+def test_found_order_is_not_a_failed_lookup():
+    deps = make_deps([plan(), lookup("ORD-1001"), final(), review()])
+    assert run_graph(deps)["failed_lookups"] == []
 
 
 def test_run_stops_at_max_llm_calls():

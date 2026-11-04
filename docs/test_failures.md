@@ -47,6 +47,10 @@ any fix.
 
 37 of 60 requests failed in at least one system's run.
 
+One blank reply is not in the table above: on REQ-082 in Haiku run 3, the agent asked nothing and
+returned an empty reply. The metric counted it as correct, because it scores the action type and
+not the text. The reported number is left as it is, and the bug was fixed afterwards.
+
 ## Agent failures by type
 
 | Type | Requests | Effect |

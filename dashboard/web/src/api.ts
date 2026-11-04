@@ -25,7 +25,7 @@ export interface Run {
 }
 
 export interface Pending {
-  action: string;
+  action: string | null;
   args: Args;
   reply: string;
   reasons: string[];
