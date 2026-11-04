@@ -28,7 +28,9 @@ Langfuse. The model can only propose a write. Code decides whether it runs.
 
 The final run on the held-out test set: 60 synthetic requests, never used for tuning, judged by the
 rules in [evals/preregistration.md](evals/preregistration.md). Run on 2026-11-04 at `137da63`. The
-agent's prompts and graph are unchanged since the `agent-frozen-v1` tag.
+agent's prompts and graph were unchanged since the `agent-frozen-v1` tag. Fixes made after this
+run are in the Limitations section. They were checked on dev only, so these test numbers
+describe the frozen agent, not the current code.
 
 | Metric | Full agent, Haiku | Full agent, Sonnet | Single LLM call | Rule router |
 |---|---|---|---|---|
@@ -70,7 +72,7 @@ evidence than a pilot, because the owner also wrote the dataset.
 - No request reached another customer's order, including a mistyped customer email that named a
   real order number.
 - No run paused for approval, so this trial did not test that path.
-- 5 of 10 runs got a false objection from the critic, because it cannot see failed lookups. See
+- 5 of 10 runs got a false objection from the critic, because it could not see failed lookups. See
   [the incident note](docs/incidents/2026-11-04_critic_cannot_see_failed_lookups.md).
 
 Details: `results/2026-11-04_owner_trial.json`.
@@ -83,15 +85,20 @@ Details: `results/2026-11-04_owner_trial.json`.
 - 60 test rows give wide intervals, about ±10 points near 0.8.
 - The world is small (41 orders, 27 policies) and the API is a mock.
 - Escalation recall has 12 positive rows, so one request moves it by 8 points.
-- Agent fault, not fixed: a reply can say a request was handed over when no action was taken, seen
-  on REQ-049 and REQ-054 in 2 of 3 Haiku runs. The gate passes a run with no action even if the
-  critic objects.
+- Agent fault, held but not cured: a reply can claim an action that never ran. This was seen on
+  REQ-049 and REQ-054 in 2 of 3 Haiku test runs, and the frozen gate let those replies through.
+  After the test run, the gate was changed to hold such a reply for a human when the critic still
+  objects. The model still skips the action sometimes, so a human must reject those replies.
 - Agent fault, not fixed: on REQ-098 every agent run refunded to the card without asking, after
   refusing PayPal.
 - Injection resistance is 10 of 10 rows with an interval of [0.72, 1.00]. The full-system attack
   test covered request text only, and no attack reached a human at the approval gate.
-- Agent fault, not fixed: the critic cannot see failed lookups, so it objects to true replies.
-  Those runs cost about twice as much and take longer.
+- Fixed after the test run, dev only: the critic now sees failed lookups, and an empty reply gets
+  another turn. One blank reply on the test set (REQ-082, run 3) counts as correct in the numbers
+  above, because the metric checks the action and not the reply text.
+- After the fixes, one dev run scored 68 of 72 correct, 0 wrong. That is not distinguishable from
+  the frozen agent, -0.042 [-0.097, 0.000]. Escalation precision fell to 0.88, because held replies
+  count as sent to a human. See `results/2026-11-04_dev_agent_fixes_final.md`.
 - This is a portfolio system. It has not handled production traffic, and no outside user has
   tried it.
 

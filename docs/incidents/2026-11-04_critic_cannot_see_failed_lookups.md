@@ -29,5 +29,10 @@ the critic must see failed lookups first.
 
 ## Status
 
-Not fixed. The agent stays frozen at `agent-frozen-v1` for the reported numbers. When it is fixed,
-add a regression test with the fix: a not-found lookup must reach the critic as a failed lookup.
+Fixed on 2026-11-04 on the `agent-fixes` branch, after the test run. Failed lookups are recorded
+and shown to the critic, and `test_failed_lookups_reach_the_critic` keeps it that way. On the same
+5 not-found messages, the critic then objected on 1 of 5 instead of 5 of 5. That objection looks
+real: the reply said the number was malformed, and the record said no order was found. The
+gate now holds a reply the critic still rejects.
+
+The published test numbers stay as they are. `agent-frozen-v1` still marks the agent they measured.
