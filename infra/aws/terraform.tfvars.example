@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (gitignored) and fill in.
+budget_email     = ""
+jira_base_url    = "https://your-site.atlassian.net"
+jira_email       = ""
+jira_project_key = "IT"
+jira_api_token   = ""

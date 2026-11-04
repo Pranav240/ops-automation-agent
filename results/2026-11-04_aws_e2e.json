@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-04",
+  "commit": "6eb36e2",
+  "note": "agent_run.git_commit is the commit the worker ran at, with uncommitted changes",
+  "region": "ap-south-1",
+  "provider_used": "anthropic (direct API)",
+  "model": "claude-haiku-5-5",
+  "unsigned_request_status": 403,
+  "runs": [
+    {
+      "request_id": "E2E-1",
+      "run_id": "bed2a53e4c3f538866780ac4af996ac3",
+      "dynamodb_status": "done",
+      "step_functions": "SUCCEEDED",
+      "agent_run": {
+        "source": "api",
+        "status": "done",
+        "action": null,
+        "kind": "clarification",
+        "amount": null,
+        "approved_by": null,
+        "executed": false,
+        "cost_usd": 0.0013471,
+        "latency_s": 13.757,
+        "model": "claude-haiku-5-5",
+        "git_commit": "4a6cd73"
+      },
+      "trace_id": "2b4275489f7442f8303a040de287dc07",
+      "trace_spans": [
+        "anthropic.messages.create",
+        "approval_gate",
+        "commit",
+        "critic",
+        "intake",
+        "mock_api GET /orders/ORD-1001",
+        "planner",
+        "retriever",
+        "tool_agent",
+        "work_queue",
+        "worker run"
+      ]
+    },
+    {
+      "request_id": "E2E-2",
+      "run_id": "977ec16bd1623e2b50679731bcf49f96",
+      "dynamodb_status": "done",
+      "step_functions": "SUCCEEDED",
+      "agent_run": {
+        "source": "api",
+        "status": "done",
+        "action": "refund",
+        "kind": "answer",
+        "amount": 649.0,
+        "approved_by": "owner",
+        "executed": true,
+        "cost_usd": 0.004002,
+        "latency_s": 27.61,
+        "model": "claude-haiku-5-5",
+        "git_commit": "4a6cd73"
+      },
+      "trace_id": "8645a38e97a6b165de010123afaedbd8",
+      "trace_spans": [
+        "anthropic.messages.create",
+        "approval_gate",
+        "commit",
+        "critic",
+        "intake",
+        "mock_api GET /orders/ORD-1011",
+        "mock_api POST /refunds",
+        "planner",
+        "retriever",
+        "tool_agent",
+        "work_queue",
+        "worker resume",
+        "worker run"
+      ]
+    },
+    {
+      "request_id": "IT-3",
+      "run_id": "46478252849a85677c9ad35b53642c91",
+      "dynamodb_status": "done",
+      "step_functions": "SUCCEEDED",
+      "agent_run": {
+        "source": "jira",
+        "status": "done",
+        "action": null,
+        "kind": "answer",
+        "amount": null,
+        "approved_by": null,
+        "executed": false,
+        "cost_usd": 0.0012039,
+        "latency_s": 13.301,
+        "model": "claude-haiku-5-5",
+        "git_commit": "4a6cd73"
+      },
+      "trace_id": "9f29e8cbfec192f1eb56a84ee1d5f84d",
+      "trace_spans": [
+        "anthropic.messages.create",
+        "approval_gate",
+        "commit",
+        "critic",
+        "intake",
+        "mock_api GET /orders/ORD-1004",
+        "planner",
+        "retriever",
+        "tool_agent",
+        "work_queue",
+        "worker run"
+      ]
+    },
+    {
+      "request_id": "E2E-FAIL-WORK",
+      "run_id": "1590578468cc5713c847fb478bcabba9",
+      "dynamodb_status": "failed",
+      "step_functions": "FAILED",
+      "agent_run": null,
+      "trace_id": "d96cc0f39558c09b9edec1898cb223c8",
+      "trace_spans": [
+        "anthropic.messages.create",
+        "intake",
+        "planner",
+        "work_queue",
+        "worker run"
+      ]
+    }
+  ],
+  "bad_body_request": "'this is not json' was accepted by the API and landed in the intake DLQ",
+  "worker_failure": "worker with an invalid API key failed 3 times, message moved to the work DLQ; the state machine timed out after 15 minutes and marked the run failed",
+  "queues_after": {
+    "intake": 0,
+    "intake-dlq": 1,
+    "work": 0,
+    "work-dlq": 1
+  },
+  "alarms_after": {
+    "ops-agent-intake-dlq": "ALARM",
+    "ops-agent-intake-errors": "OK",
+    "ops-agent-jira-poll-errors": "OK",
+    "ops-agent-work-dlq": "ALARM"
+  },
+  "llm_cost_usd": 0.006553,
+  "bedrock": {
+    "status": "not tested with a real call",
+    "reason": "the account cannot submit Anthropic's use case form: 'Your account is not authorized to perform this action'. AWS support case opened by the owner on 2026-11-04",
+    "seen": "model agreement NOT_AUTHORIZED; invoke returned 400 'Operation not allowed'; AWS offer rate card lists 0.1 input and 0.5 output for global standard"
+  },
+  "destroy": {
+    "main_stack_destroyed": 40,
+    "bootstrap_destroyed": 2,
+    "checked_empty": [
+      "sqs",
+      "lambda",
+      "event source mappings",
+      "step functions",
+      "dynamodb",
+      "s3",
+      "api gateway",
+      "iam roles",
+      "log groups",
+      "ssm",
+      "alarms",
+      "sns",
+      "eventbridge",
+      "budgets"
+    ],
+    "note": "the tagging API still listed the deleted event source mapping just after destroy; a direct lookup found no such mapping"
+  }
+}

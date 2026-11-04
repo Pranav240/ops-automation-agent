@@ -76,6 +76,22 @@ class AnthropicProvider:
         )
 
 
+class BedrockProvider(AnthropicProvider):
+    """Claude on Amazon Bedrock, signed with AWS credentials.
+
+    Same request shape as the direct API, so only the client differs. The region and credentials
+    come from the standard AWS settings. Haiku 5.5 is reached through its global inference profile:
+    Bedrock's newer Mantle endpoint did not offer it in ap-south-1 or us-east-1 (2026-11-04).
+    """
+
+    name = "bedrock"
+
+    def __init__(self, timeout_s: float = 60.0, max_retries: int = 3):
+        import anthropic
+
+        self.client = anthropic.AsyncAnthropicBedrock(timeout=timeout_s, max_retries=max_retries)
+
+
 @dataclass
 class FakeProvider:
     """Scripted provider for tests. Replies are returned in order.

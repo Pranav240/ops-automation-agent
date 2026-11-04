@@ -1,9 +1,13 @@
-"""USD prices per 1M tokens (Anthropic first-party rates, checked 2026-10-08)."""
+"""USD prices per 1M tokens (Anthropic first-party rates, checked 2026-10-08).
+
+Bedrock's global rates match them (AWS's model offer for this account, checked 2026-11-04).
+"""
 
 PRICES = {
     # model: (input, output)
     "claude-haiku-5-5": (0.10, 0.50),  # prompts up to 100K tokens
     "claude-sonnet-5-5": (2.00, 10.00),
+    "global.anthropic.claude-haiku-5-5": (0.10, 0.50),  # Bedrock, global inference profile
 }
 
 

@@ -61,6 +61,17 @@ is checked with sqlglot and run as a read-only role; every question is logged in
 Metric definitions are in `evals/metrics.py` and `evals/preregistration.md`. Qdrant (for the
 retrieval comparison only): `docker compose up -d`, then `uv run python -m retrieval.qdrant_store`.
 
+## AWS intake
+
+Requests arrive at a signed, throttled API or from a Jira poll every 5 minutes. Step Functions
+hands each one to the worker through SQS, and waits for a human when a run is risky. Failures land
+in dead-letter queues. All of it is in `infra/aws`. Steps are in [docs/runbook.md](docs/runbook.md).
+
+```
+python -m integrations.submit REQ-T1 ben.okafor@example.com "Where is order ORD-1004?"
+AWS_PROFILE=ops-worker python -m integrations.queue_worker --once
+```
+
 ## How it works
 
 - `agent/graph.py`: LangGraph graph `planner -> retriever -> tool_agent -> critic -> approval_gate -> commit`, with a Postgres checkpointer so a paused run can be resumed from another process.

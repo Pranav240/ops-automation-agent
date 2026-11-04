@@ -7,3 +7,11 @@ __pycache__/
 build/
 dist/
 .claude/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+infra/aws/.build/

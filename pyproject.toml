@@ -7,7 +7,7 @@ name = "ops-automation-agent"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=1.12",
+    "anthropic[bedrock]>=1.12",
     "langfuse>=4.17",
     "python-dotenv>=1.0",
     "fastapi>=0.148",
@@ -22,6 +22,8 @@ dependencies = [
     "httpx>=0.28.1",
     "qdrant-client>=1.20.0",
     "sqlglot>=30.29.0",
+    "opentelemetry-sdk>=1.45.2",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.2",
 ]
 
 [project.optional-dependencies]
