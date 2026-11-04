@@ -1,6 +1,99 @@
 # Ops Automation Agent
 
-Agentic automation for inbound business requests. Work in progress (Phase 4: Jira + text-to-SQL). Dev results: `results/2026-11-03_dev.md`.
+Agentic automation for inbound support requests. Requests are planned, enriched with retrieved
+policy, acted on through APIs, checked by a critic, and paused for a human when risky. AWS
+serverless handles intake, Kubernetes runs the workers, and a preregistered eval judges quality.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    C[Customer request] --> I[API Gateway or Jira poll]
+    I --> Q1[Intake SQS] --> L[Lambda] --> SF[Step Functions]
+    SF --> Q2[Work SQS] --> W[Workers on Kubernetes, scaled by KEDA]
+    W --> P[Planner] --> R[Retriever: pgvector and full text]
+    R --> T[Tool agent: reads orders, proposes one action]
+    T --> CR[Critic] --> G{Approval gate}
+    G -- safe --> CM[Commit: writes through the API]
+    G -- risky --> H[Dashboard: human approves, edits or rejects]
+    H --> SF
+    SF -- resume --> W
+    H --> CM
+```
+
+Every LLM call goes through `agent/llm/`, which caps tokens, spend and iterations and logs cost to
+Langfuse. The model can only propose a write. Code decides whether it runs.
+
+## Results
+
+The final run on the held-out test set: 60 synthetic requests, never used for tuning, judged by the
+rules in [evals/preregistration.md](evals/preregistration.md). Run on 2026-11-04 at `137da63`. The
+agent's prompts and graph are unchanged since the `agent-frozen-v1` tag.
+
+| Metric | Full agent, Haiku | Full agent, Sonnet | Single LLM call | Rule router |
+|---|---|---|---|---|
+| Runs | 3 | 1 | 3 | 1 |
+| Correct action rate | 0.87 ± 0.04 [0.74, 0.92] | 0.92 [0.82, 0.96] | 0.72 ± 0.02 [0.61, 0.83] | 0.62 [0.49, 0.73] |
+| Wrong action rate | 0.02 ± 0.01 [0.00, 0.09] | 0.05 [0.02, 0.14] | 0.06 ± 0.01 [0.02, 0.14] | 0.23 [0.14, 0.35] |
+| Escalation recall | 0.86 ± 0.05 [0.55, 0.95] | 1.00 [0.76, 1.00] | 0.89 ± 0.05 [0.65, 0.99] | 0.58 [0.32, 0.81] |
+| Escalation precision | 0.97 ± 0.05 [0.72, 1.00] | 1.00 [0.76, 1.00] | 0.87 ± 0.04 [0.65, 0.99] | 1.00 [0.65, 1.00] |
+| Injection resistance | 1.00 [0.72, 1.00] | 1.00 [0.72, 1.00] | 0.93 ± 0.06 [0.72, 1.00] | 0.60 [0.31, 0.83] |
+| Reply quality (1-5, 30 replies) | 4.60 | 5.00, scored by the owner | 4.20 | 2.43 |
+| Cost per request | $0.00184 | $0.03329 | $0.00025 | $0 |
+| Latency p95 | 20.9 s | 23.0 s | 4.4 s | 0.0 s |
+
+Values are the mean ± standard deviation across runs, with a 95% Wilson interval from the first
+run. A difference is called real only if its paired bootstrap interval excludes 0. The Sonnet judge
+never scores its own model, so the owner scored the Sonnet replies by hand, not blind. That 5.00
+cannot be compared with the judge's scores in the other columns.
+
+- The agent beat the single LLM call on correct action rate: +0.117 [+0.017, +0.217]. The wrong
+  action gap to that baseline was not distinguishable: -0.033 [-0.083, 0.000].
+- The agent beat the rule router on both: +0.233 [+0.083, +0.383] and -0.217 [-0.317, -0.117].
+- Sonnet vs Haiku was not distinguishable on either: +0.067 [-0.017, +0.167] correct, +0.033
+  [0.000, +0.083] wrong. Sonnet cost 18 times as much per request.
+- The Haiku agent met 9 of 10 targets and missed escalation recall: 0.86 against 0.90. See
+  `results/2026-11-04_test_targets.md`.
+- Correct action rate fell from 0.97 on dev to 0.87 on test, which is what tuning on dev costs.
+
+Files: `results/2026-11-04_test.md`, `results/2026-11-04_test_judge.md`,
+[docs/test_failures.md](docs/test_failures.md) lists all 37 requests that failed in any run, with
+causes. Choices and trade-offs are in [docs/decisions.md](docs/decisions.md).
+
+## Owner trial
+
+No outside testers were available, so no pilot was run. Instead the owner sent 10 messy requests
+through Jira: typos, invented orders, wrong customers and items not on the order. This is weaker
+evidence than a pilot, because the owner also wrote the dataset.
+
+- 10 requests, 0 errors, 1 action executed: the correct $45 partial refund on IT-4.
+- No request reached another customer's order, including a mistyped customer email that named a
+  real order number.
+- No run paused for approval, so this trial did not test that path.
+- 5 of 10 runs got a false objection from the critic, because it cannot see failed lookups. See
+  [the incident note](docs/incidents/2026-11-04_critic_cannot_see_failed_lookups.md).
+
+Details: `results/2026-11-04_owner_trial.json`.
+
+## Limitations
+
+- All 132 requests, labels and policy documents are synthetic: none of the dataset came from real
+  customers. It was written with AI assistance, and one person reviewed the labels, so there is no
+  inter-annotator agreement.
+- 60 test rows give wide intervals, about ±10 points near 0.8.
+- The world is small (41 orders, 27 policies) and the API is a mock.
+- Escalation recall has 12 positive rows, so one request moves it by 8 points.
+- Agent fault, not fixed: a reply can say a request was handed over when no action was taken, seen
+  on REQ-049 and REQ-054 in 2 of 3 Haiku runs. The gate passes a run with no action even if the
+  critic objects.
+- Agent fault, not fixed: on REQ-098 every agent run refunded to the card without asking, after
+  refusing PayPal.
+- Injection resistance is 10 of 10 rows with an interval of [0.72, 1.00]. The full-system attack
+  test covered request text only, and no attack reached a human at the approval gate.
+- Agent fault, not fixed: the critic cannot see failed lookups, so it objects to true replies.
+  Those runs cost about twice as much and take longer.
+- This is a portfolio system. It has not handled production traffic, and no outside user has
+  tried it.
 
 ## Setup
 
@@ -32,7 +125,7 @@ uv run python scripts/smoke_llm.py   # one real Haiku call + one refused call
 uv run python -m evals.validate_dataset
 ```
 
-## Evaluation (dev split only until Phase 8)
+## Evaluation
 
 ```bash
 uv run python -m evals.runner --systems B2,B1,A-H --split dev          # results/runs/*.jsonl
@@ -41,6 +134,7 @@ uv run python -m evals.report results/runs/<files> --out results/<name>   # tabl
 uv run python -m evals.retrieval_eval --out results/<name>             # retrieval variants incl. Qdrant
 uv run python -m evals.judge score results/runs/<files>                # Sonnet judge, 30 replies each
 uv run python -m evals.ci_gate                                         # CI gate on a fixed dev subset
+uv run python -m evals.judge hand-export <run file> --out <dir>/labels.csv   # replies the judge must not score
 ```
 
 ## Jira and run history

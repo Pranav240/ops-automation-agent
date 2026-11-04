@@ -14,6 +14,10 @@ Steps:
                The judge is used only if kappa >= 0.6 (preregistration section 4).
   4. score:    python -m evals.judge score RUN_FILES...
                30 sampled replies per system (seed 0, same request IDs for every system).
+  5. by hand:  python -m evals.judge hand-export RUN_FILE --out DIR/labels.csv
+               the same 30 requests for a system the judge must not score, shuffled.
+               The owner fills owner_score, then:
+               python -m evals.judge hand-score RUN_FILE DIR/labels.csv
 """
 
 import argparse
@@ -217,6 +221,48 @@ async def score(paths: list[Path]) -> None:
     llm.tracer.flush()
 
 
+def hand_export(path: Path, out: Path) -> None:
+    records = read_records([path])
+    rows = load_rows(records[0]["split"])
+    by_id = {r["request_id"]: r for r in records}
+    ids = sample_ids(list(rows))
+    random.Random(SEED).shuffle(ids)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            ["item", "request_id", "request_text", "reference_reply", "reply", "owner_score"]
+        )
+        for n, i in enumerate(ids, start=1):
+            row = rows[i]
+            reply = by_id[i]["reply"]
+            writer.writerow([n, i, row["request_text"], row["reference_reply"], reply, ""])
+    print(f"wrote {out} ({len(ids)} items). Fill in owner_score (1-5) for every row.")
+
+
+def hand_score(path: Path, labels: Path) -> None:
+    records = read_records([path])
+    with labels.open(encoding="utf-8", newline="") as f:
+        items = list(csv.DictReader(f))
+    if {i["request_id"] for i in items} != set(sample_ids([r["request_id"] for r in records])):
+        raise SystemExit("labels are not the sampled requests of this run")
+    if any(i["owner_score"].strip() not in ("1", "2", "3", "4", "5") for i in items):
+        raise SystemExit("every row needs an owner_score from 1 to 5")
+    scores = [int(i["owner_score"]) for i in items]
+    payload = {
+        "run_file": path.name,
+        "system": records[0]["system"],
+        "scorer": "owner",
+        "date": date.today().isoformat(),
+        **git_state(),
+        "mean_score": statistics.mean(scores),
+        "items": [{"request_id": i["request_id"], "score": int(i["owner_score"])} for i in items],
+    }
+    out = RESULTS / f"{path.stem}_human.json"
+    out.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+    print(f"{payload['system']}: mean {payload['mean_score']:.2f} over {len(scores)} -> {out.name}")
+
+
 def main(argv=None):
     load_dotenv(".env")
     parser = argparse.ArgumentParser()
@@ -230,11 +276,21 @@ def main(argv=None):
     p.add_argument("labels", type=Path)
     p = sub.add_parser("score")
     p.add_argument("files", nargs="+", type=Path)
+    p = sub.add_parser("hand-export")
+    p.add_argument("file", type=Path)
+    p.add_argument("--out", type=Path, required=True)
+    p = sub.add_parser("hand-score")
+    p.add_argument("file", type=Path)
+    p.add_argument("labels", type=Path)
     args = parser.parse_args(argv)
     if args.command == "export":
         export(args.files, args.out, args.seed, args.exclude)
     elif args.command == "validate":
         asyncio.run(validate(args.labels))
+    elif args.command == "hand-export":
+        hand_export(args.file, args.out)
+    elif args.command == "hand-score":
+        hand_score(args.file, args.labels)
     else:
         asyncio.run(score(args.files))
 
