@@ -35,12 +35,33 @@ Run the worker. It needs Postgres, ingested policies and the mock API.
 AWS_PROFILE=ops-worker uv run python -m integrations.queue_worker
 ```
 
-Destroy after every session, main stack first:
+Destroy after every session. The script stops paused runs, which otherwise block the state
+machine from being deleted, and keeps the state bucket unless the main stack really is gone:
 
 ```bash
-terraform -chdir=infra/aws destroy
-terraform -chdir=infra/aws/bootstrap destroy
+bash scripts/destroy.sh
 ```
+
+## Workers on kind
+
+Scaling needs the AWS stack, because KEDA reads the real SQS queue.
+
+```bash
+kind create cluster --name ops-agent
+docker build -f docker/mock-api.Dockerfile -t ops-agent-mock-api:local .
+docker build -f docker/worker.Dockerfile -t ops-agent-worker:local --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) .
+kind load docker-image ops-agent-mock-api:local ops-agent-worker:local --name ops-agent
+helm repo add kedacore https://kedacore.github.io/charts
+helm install keda kedacore/keda --version 2.21.0 --namespace keda --create-namespace --wait
+uv run python scripts/kind_values.py
+helm install ops-agent deploy/helm/ops-agent -f deploy/helm/values.local.yaml --wait --timeout 6m
+uv run python scripts/scale_test.py --count 40 --cluster kind
+```
+
+- Temporary AWS keys last 1 hour. Run `kind_values.py` and `helm upgrade` again when they expire.
+- Changing `POSTGRES_PASSWORD` needs a fresh install, because the database keeps its first password.
+- Delete `deploy/helm/values.local.yaml` afterwards. It holds secrets and is gitignored.
+- Finish with `kind delete cluster --name ops-agent`.
 
 ## DLQ full
 

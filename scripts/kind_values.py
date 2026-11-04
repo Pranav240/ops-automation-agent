@@ -23,7 +23,13 @@ FROM_ENV = [
     "LANGFUSE_SECRET_KEY",
     "JIRA_API_TOKEN",
 ]
-CONFIG = ["JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY", "OPS_WORK_QUEUE_URL", "OPS_RUNS_TABLE"]
+CONFIG = [
+    "JIRA_BASE_URL",
+    "JIRA_EMAIL",
+    "JIRA_PROJECT_KEY",
+    "LANGFUSE_BASE_URL",  # the keys belong to one Langfuse region
+    "OPS_RUNS_TABLE",
+]
 
 
 def terraform_output(name: str) -> str:
