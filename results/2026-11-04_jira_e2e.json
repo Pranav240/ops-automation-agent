@@ -1,0 +1,22 @@
+{
+ "check": "Phase 4 acceptance: a real Jira request through the agent, reply back in Jira",
+ "date": "2026-11-04",
+ "model": "claude-haiku-5-5",
+ "commit": "8ab8dd5",
+ "dataset_request": "REQ-002 (dev)",
+ "ticket": "IT-1",
+ "run_id": "c0912ff233f14953b259bf4440c68c94",
+ "action": "refund",
+ "amount": 249.0,
+ "expected_action": "refund",
+ "expected_amount": 249.0,
+ "executed": true,
+ "public_comment_posted": true,
+ "final_status": "Resolved",
+ "labels": [
+  "ops-agent"
+ ],
+ "llm_calls": 5,
+ "cost_usd": 0.0020428,
+ "latency_s": 19.495
+}
