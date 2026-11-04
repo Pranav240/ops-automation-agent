@@ -5,6 +5,7 @@ proposes them; the commit node executes them after the critic and the approval g
 """
 
 import asyncio
+import os
 from dataclasses import dataclass
 from typing import Literal
 
@@ -141,7 +142,10 @@ class ApiResult:
 
 class MockApi:
     """Async client. GETs retry on connection errors and 5xx; POSTs retry only when the
-    connection failed before the request was sent, so a write is never sent twice."""
+    connection failed before the request was sent, so a write is never sent twice.
+
+    Lookups use the read token and writes use the write token, so the code path the tool agent
+    drives (lookups) has no write access. Only the commit node sends writes."""
 
     def __init__(
         self,
@@ -150,16 +154,23 @@ class MockApi:
         timeout_s: float = 10.0,
         retries: int = 3,
         backoff_s: float = 0.5,
+        read_token: str | None = None,
+        write_token: str | None = None,
     ):
         self.client = httpx.AsyncClient(base_url=base_url, transport=transport, timeout=timeout_s)
+        self.tokens = {
+            "GET": read_token or os.getenv("MOCK_API_READ_TOKEN", ""),
+            "POST": write_token or os.getenv("MOCK_API_WRITE_TOKEN", ""),
+        }
         self.retries = retries
         self.backoff_s = backoff_s
 
     async def _request(self, method: str, path: str, json: dict | None = None) -> ApiResult:
+        headers = {"Authorization": f"Bearer {self.tokens[method]}"}
         for attempt in range(self.retries + 1):
             last = attempt == self.retries
             try:
-                response = await self.client.request(method, path, json=json)
+                response = await self.client.request(method, path, json=json, headers=headers)
             except httpx.ConnectError:
                 if last:
                     raise

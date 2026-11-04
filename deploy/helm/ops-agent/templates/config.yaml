@@ -10,19 +10,71 @@ data:
   {{ $key }}: {{ $value | quote }}
   {{- end }}
 ---
+# One Secret per piece, so each pod gets only what it uses. See docs/security.md.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ops-agent-secrets
+  name: ops-agent-postgres-secrets
 type: Opaque
 stringData:
   POSTGRES_PASSWORD: {{ required "secrets.POSTGRES_PASSWORD is required" .Values.secrets.POSTGRES_PASSWORD | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ops-agent-setup-secrets
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ .Values.secrets.POSTGRES_PASSWORD | quote }}
   SQL_READER_PASSWORD: {{ required "secrets.SQL_READER_PASSWORD is required" .Values.secrets.SQL_READER_PASSWORD | quote }}
-  {{- range $key, $value := omit .Values.secrets "POSTGRES_PASSWORD" "SQL_READER_PASSWORD" }}
-  {{- if $value }}
-  {{ $key }}: {{ $value | quote }}
+  WORKER_DB_PASSWORD: {{ required "secrets.WORKER_DB_PASSWORD is required" .Values.secrets.WORKER_DB_PASSWORD | quote }}
+  DASHBOARD_DB_PASSWORD: {{ required "secrets.DASHBOARD_DB_PASSWORD is required" .Values.secrets.DASHBOARD_DB_PASSWORD | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ops-agent-mock-api-secrets
+type: Opaque
+stringData:
+  MOCK_API_READ_TOKEN: {{ required "secrets.MOCK_API_READ_TOKEN is required" .Values.secrets.MOCK_API_READ_TOKEN | quote }}
+  MOCK_API_WRITE_TOKEN: {{ required "secrets.MOCK_API_WRITE_TOKEN is required" .Values.secrets.MOCK_API_WRITE_TOKEN | quote }}
+  MOCK_API_ADMIN_TOKEN: {{ required "secrets.MOCK_API_ADMIN_TOKEN is required" .Values.secrets.MOCK_API_ADMIN_TOKEN | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ops-agent-worker-secrets
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ .Values.secrets.WORKER_DB_PASSWORD | quote }}
+  MOCK_API_READ_TOKEN: {{ .Values.secrets.MOCK_API_READ_TOKEN | quote }}
+  MOCK_API_WRITE_TOKEN: {{ .Values.secrets.MOCK_API_WRITE_TOKEN | quote }}
+  {{- range $key := list "ANTHROPIC_API_KEY" "LANGFUSE_PUBLIC_KEY" "LANGFUSE_SECRET_KEY" "JIRA_API_TOKEN" "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "AWS_SESSION_TOKEN" }}
+  {{- with (get $.Values.secrets $key) }}
+  {{ $key }}: {{ . | quote }}
   {{- end }}
   {{- end }}
+{{- if .Values.dashboard.enabled }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ops-agent-dashboard-secrets
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: {{ .Values.secrets.DASHBOARD_DB_PASSWORD | quote }}
+  DASHBOARD_VIEWER_TOKEN: {{ required "secrets.DASHBOARD_VIEWER_TOKEN is required" .Values.secrets.DASHBOARD_VIEWER_TOKEN | quote }}
+  DASHBOARD_APPROVER_TOKEN: {{ required "secrets.DASHBOARD_APPROVER_TOKEN is required" .Values.secrets.DASHBOARD_APPROVER_TOKEN | quote }}
+  {{- with .Values.secrets.DASHBOARD_AWS_ACCESS_KEY_ID }}
+  AWS_ACCESS_KEY_ID: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.secrets.DASHBOARD_AWS_SECRET_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.secrets.DASHBOARD_AWS_SESSION_TOKEN }}
+  AWS_SESSION_TOKEN: {{ . | quote }}
+  {{- end }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount

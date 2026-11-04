@@ -11,13 +11,13 @@ spec:
   {{- else }}
   secretTargetRef:
     - parameter: awsAccessKeyID
-      name: ops-agent-secrets
+      name: ops-agent-worker-secrets
       key: AWS_ACCESS_KEY_ID
     - parameter: awsSecretAccessKey
-      name: ops-agent-secrets
+      name: ops-agent-worker-secrets
       key: AWS_SECRET_ACCESS_KEY
     - parameter: awsSessionToken
-      name: ops-agent-secrets
+      name: ops-agent-worker-secrets
       key: AWS_SESSION_TOKEN
   {{- end }}
 ---

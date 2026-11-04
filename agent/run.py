@@ -1,8 +1,8 @@
 """Run the agent on dev-set requests, and resume runs paused for approval.
 
 Needs Postgres (docker compose up -d), ingested policies (python -m retrieval.ingest) and the
-mock API (uvicorn mock_api.app:app). Only the dev split can be loaded here; the frozen test
-split is never read by this script.
+mock API (uvicorn mock_api.app:app --env-file .env). Only the dev split can be loaded here; the
+frozen test split is never read by this script.
 
 Usage:
   python -m agent.run REQ-002 REQ-004          # reset the mock API, run each request
@@ -13,6 +13,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from datetime import date
@@ -86,7 +87,8 @@ async def main(args) -> None:
                 answer["args"] = json.loads(args.args)
             show(await resume(graph, args.resume, answer), llm.tracer)
         for row in load_dev(args.ids):
-            await api.client.post("/reset")
+            admin = {"Authorization": f"Bearer {os.getenv('MOCK_API_ADMIN_TOKEN', '')}"}
+            await api.client.post("/reset", headers=admin)
             print(f"\n== {row['id']} ({row['category']}): {row['request_text']}")
             out = await start(graph, row)
             show(out, llm.tracer)

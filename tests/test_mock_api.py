@@ -1,12 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mock_api.app import app
+from mock_api.app import app, create_app
+from tests.conftest import TOKENS, ScopedClient
 
 
 @pytest.fixture
 def api():
-    client = TestClient(app)
+    client = ScopedClient(TestClient(app))
     client.post("/reset")
     return client
 
@@ -108,3 +109,46 @@ def test_reset_restores_seed(api):
     api.post("/orders/ORD-1005/status", json={"status": "cancelled"})
     api.post("/reset")
     assert api.get("/orders/ORD-1005").json()["status"] == "processing"
+
+
+WRITES = [
+    ("post", "/refunds", {"order_id": "ORD-1001", "amount": 1, "reason": "lost"}),
+    ("post", "/orders/ORD-1001/status", {"status": "on_hold"}),
+    ("post", "/escalations", {"reason": "other", "summary": "x"}),
+    ("post", "/tickets/T-1/close", {"resolution": "x"}),
+]
+READS = [("get", "/orders/ORD-1001", None)]
+ADMIN = [("post", "/reset", None), ("get", "/actions", None)]
+ROUTES = {"read": READS, "write": WRITES, "admin": ADMIN}
+
+
+def call(route, token=None):
+    method, path, body = route
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    return TestClient(app).request(method, path, json=body, headers=headers)
+
+
+@pytest.mark.parametrize("route", READS + WRITES + ADMIN)
+def test_every_route_refuses_a_call_with_no_token_or_a_bad_one(route):
+    assert call(route).status_code == 401
+    assert call(route, "guess").status_code == 401
+
+
+@pytest.mark.parametrize("scope", TOKENS)
+def test_each_token_reaches_only_its_own_routes(api, scope):
+    for route_scope, routes in ROUTES.items():
+        for route in routes:
+            status = call(route, TOKENS[scope]).status_code
+            if scope == route_scope:
+                assert status not in (401, 403)
+            else:
+                assert status == 403
+
+
+def test_an_unset_token_lets_nobody_in():
+    bare = TestClient(create_app({"read": "", "write": "", "admin": ""}))
+    assert bare.get("/orders/ORD-1001", headers={"Authorization": "Bearer "}).status_code == 401
+
+
+def test_health_needs_no_token():
+    assert TestClient(app).get("/health").status_code == 200

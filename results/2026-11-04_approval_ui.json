@@ -1,0 +1,104 @@
+{
+ "model": "claude-haiku-5-5",
+ "date": "2026-11-04",
+ "commit": "3047d93",
+ "dirty": false,
+ "runs": [
+  {
+   "request": "UI-PROOF-1",
+   "decision": "approve (clicked in the browser)",
+   "paused_for": [
+    "refund over $500"
+   ],
+   "status": "done",
+   "executed": true,
+   "approved_by": "dashboard-approver",
+   "amount": 720.0,
+   "args": {
+    "order_id": "ORD-1033",
+    "amount": 720.0,
+    "reason": "lost"
+   },
+   "cost_usd": 0.0020902,
+   "run_id": "31eb3c794b4856e87f842b293bbe149b",
+   "trace_id": "c58be46633bd6644c51d8e6e4d1f73d5"
+  },
+  {
+   "request": "UI-PROOF-4",
+   "decision": "reject",
+   "paused_for": [
+    "refund over $500",
+    "critic still found problems after one revision"
+   ],
+   "status": "rejected",
+   "executed": false,
+   "approved_by": "dashboard-approver",
+   "amount": 649.0,
+   "args": {
+    "order_id": "ORD-1011",
+    "amount": 649.0,
+    "reason": "damaged_or_defective"
+   },
+   "cost_usd": 0.0039457,
+   "run_id": "c1810034b7a7e5494b125b91d1691c85",
+   "trace_id": "42a854560f44671a561a442832f9b1ca"
+  },
+  {
+   "request": "UI-PROOF-6",
+   "decision": "edit",
+   "paused_for": [
+    "refund over $500",
+    "critic still found problems after one revision"
+   ],
+   "status": "done",
+   "executed": true,
+   "approved_by": "dashboard-approver",
+   "amount": 450.0,
+   "args": {
+    "order_id": "ORD-1011",
+    "amount": 450.0,
+    "reason": "damaged_or_defective"
+   },
+   "cost_usd": 0.0041859,
+   "run_id": "f1cce5ba90ba1592de5039fbb863b2be",
+   "trace_id": "7ad837a1405f1e25bb580e8189484372"
+  }
+ ],
+ "mock_api_action_log": [
+  {
+   "id": 19,
+   "action": "refund",
+   "order_id": "ORD-1033",
+   "amount": 720.0,
+   "reason": "lost",
+   "approved_by": "dashboard-approver"
+  },
+  {
+   "id": 26,
+   "action": "refund",
+   "order_id": "ORD-1011",
+   "amount": 450.0,
+   "reason": "damaged_or_defective",
+   "approved_by": "dashboard-approver"
+  }
+ ],
+ "llm_cost_usd": 0.010222,
+ "duplicate_decision_status": 409,
+ "did_not_pause": [
+  {
+   "request": "UI-PROOF-2",
+   "order": "ORD-1027",
+   "result": "$499.00 refund for the console item, under the $500 limit, executed with no approval"
+  },
+  {
+   "request": "UI-PROOF-3",
+   "order": "ORD-1007",
+   "result": "no action taken; the reply says the refund is paused for approval; critic objected"
+  },
+  {
+   "request": "UI-PROOF-5",
+   "order": "ORD-1007",
+   "result": "no action taken"
+  }
+ ]
+}

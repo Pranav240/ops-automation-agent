@@ -1,8 +1,8 @@
 """Write deploy/helm/values.local.yaml (gitignored) for the workers, from .env.
 
-No long-lived AWS key goes into a cluster. On kind this uses temporary keys for the worker role:
-they last 1 hour, so run this again and `helm upgrade` when they expire. On EKS the pods get their
-roles through IRSA, and the images come from ECR.
+No long-lived AWS key goes into a cluster. On kind this uses temporary keys for the worker and
+dashboard roles: they last 1 hour, so run this again and `helm upgrade` when they expire. On EKS
+the workers get their roles through IRSA, the images come from ECR, and the dashboard stays off.
 
 Usage: uv run python scripts/helm_values.py --cluster kind
 """
@@ -20,6 +20,13 @@ OUT = Path("deploy/helm/values.local.yaml")
 FROM_ENV = [
     "POSTGRES_PASSWORD",
     "SQL_READER_PASSWORD",
+    "WORKER_DB_PASSWORD",
+    "DASHBOARD_DB_PASSWORD",
+    "MOCK_API_READ_TOKEN",
+    "MOCK_API_WRITE_TOKEN",
+    "MOCK_API_ADMIN_TOKEN",
+    "DASHBOARD_VIEWER_TOKEN",
+    "DASHBOARD_APPROVER_TOKEN",
     "ANTHROPIC_API_KEY",
     "LANGFUSE_PUBLIC_KEY",
     "LANGFUSE_SECRET_KEY",
@@ -39,17 +46,22 @@ def terraform_output(name: str, stack: str = "infra/aws") -> str:
     return subprocess.run(command, capture_output=True, text=True, check=True).stdout
 
 
-def kind_values() -> dict:
+def temporary_keys(role_output: str, prefix: str = "") -> dict:
     role = boto3.client("sts").assume_role(
-        RoleArn=terraform_output("worker_role_arn"), RoleSessionName="kind-worker"
+        RoleArn=terraform_output(role_output), RoleSessionName=f"kind-{role_output}"
     )["Credentials"]
-    print(f"keys expire at {role['Expiration']}")
+    print(f"{role_output}: keys expire at {role['Expiration']}")
     return {
-        "secrets": {
-            "AWS_ACCESS_KEY_ID": role["AccessKeyId"],
-            "AWS_SECRET_ACCESS_KEY": role["SecretAccessKey"],
-            "AWS_SESSION_TOKEN": role["SessionToken"],
-        }
+        f"{prefix}AWS_ACCESS_KEY_ID": role["AccessKeyId"],
+        f"{prefix}AWS_SECRET_ACCESS_KEY": role["SecretAccessKey"],
+        f"{prefix}AWS_SESSION_TOKEN": role["SessionToken"],
+    }
+
+
+def kind_values() -> dict:
+    return {
+        "secrets": temporary_keys("worker_role_arn")
+        | temporary_keys("dashboard_role_arn", "DASHBOARD_")
     }
 
 
@@ -63,6 +75,7 @@ def eks_values(commit: str) -> dict:
         },
         "serviceAccount": {"annotations": {"eks.amazonaws.com/role-arn": role}},
         "keda": {"auth": "irsa"},
+        "dashboard": {"enabled": False},
     }
 
 

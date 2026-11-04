@@ -1,5 +1,6 @@
-# Used by the kind job in CI. There is no AWS there, so the workers and KEDA stay off. The test
-# passwords exist only inside the throwaway cluster.
+# Used by the kind job in CI. There is no AWS there, so the workers and KEDA stay off, and the
+# dashboard starts but cannot send a decision. The test values exist only inside the throwaway
+# cluster.
 worker:
   enabled: false
 keda:
@@ -7,3 +8,10 @@ keda:
 secrets:
   POSTGRES_PASSWORD: ci-only
   SQL_READER_PASSWORD: ci-only
+  WORKER_DB_PASSWORD: ci-only
+  DASHBOARD_DB_PASSWORD: ci-only
+  MOCK_API_READ_TOKEN: ci-read
+  MOCK_API_WRITE_TOKEN: ci-write
+  MOCK_API_ADMIN_TOKEN: ci-admin
+  DASHBOARD_VIEWER_TOKEN: ci-viewer
+  DASHBOARD_APPROVER_TOKEN: ci-approver

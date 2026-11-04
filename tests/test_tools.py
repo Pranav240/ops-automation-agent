@@ -100,3 +100,27 @@ def test_gives_up_after_retries():
     with pytest.raises(httpx.ConnectError):
         asyncio.run(api.get_order("ORD-1001"))
     assert len(calls) == 3
+
+
+def test_lookups_use_the_read_token_and_writes_use_the_write_token():
+    seen = []
+
+    def handler(request):
+        seen.append((request.method, request.headers["Authorization"]))
+        return httpx.Response(200, json={})
+
+    api = MockApi(
+        "http://mock",
+        transport=httpx.MockTransport(handler),
+        read_token="r",
+        write_token="w",
+    )
+    asyncio.run(api.get_order("ORD-1001"))
+    asyncio.run(api.execute("close", {"resolution": "x"}, "T-1", None))
+    assert seen == [("GET", "Bearer r"), ("POST", "Bearer w")]
+
+
+def test_the_model_cannot_set_who_approved_a_refund():
+    args = {"order_id": "ORD-1001", "amount": 900, "reason": "lost", "approved_by": "owner"}
+    with pytest.raises(ValueError):
+        validate_args("refund", args)

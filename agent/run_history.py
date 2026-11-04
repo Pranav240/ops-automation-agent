@@ -3,6 +3,9 @@
 `agent_runs` is written by the app role. The SQL agent's role (`sql_reader`) can read only the
 `run_history` view, which leaves out customer emails. `sql_query_log` records every SQL question.
 
+Deployed pieces get their own roles too (see docs/security.md): `ops_worker` writes runs and
+checkpoints, `ops_dashboard` only reads them. Create the checkpoint and policy tables first.
+
 Usage:
   python -m agent.run_history setup                       # tables, view, read-only role
   python -m agent.run_history load results/runs/*.jsonl   # import saved eval runs
@@ -20,6 +23,9 @@ from psycopg import sql
 from agent.config import db_url
 
 READER_ROLE = "sql_reader"
+WORKER_ROLE = "ops_worker"
+DASHBOARD_ROLE = "ops_dashboard"
+CHECKPOINT_TABLES = "checkpoints, checkpoint_writes, checkpoint_blobs"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS agent_runs (
@@ -46,6 +52,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     cost_usd numeric,
     latency_s numeric
 );
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
 CREATE OR REPLACE VIEW run_history AS
     SELECT run_id, source, ticket_key, request_id, category, system, model, git_commit, run_date,
            status, action, amount, reason, kind, sent_to_approval, approved_by, executed,
@@ -71,28 +78,50 @@ COLUMNS = [
 ]  # fmt: skip
 
 
-def setup(conninfo: str, reader_password: str) -> None:
-    """Create the tables and view, and a login role that can only SELECT from run_history."""
+def login_role(conn: psycopg.Connection, name: str, password: str, grants: tuple) -> None:
+    """Create the role if needed, set its password, and reset its access to exactly `grants`."""
+    role = sql.Identifier(name)
+    if not conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [name]).fetchone():
+        conn.execute(sql.SQL("CREATE ROLE {} LOGIN").format(role))
+    conn.execute(sql.SQL("ALTER ROLE {} PASSWORD {}").format(role, sql.Literal(password)))
+    db = sql.Identifier(conn.info.dbname)
+    for stmt in (
+        "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM {role}",
+        "REVOKE CREATE ON SCHEMA public FROM {role}",
+        "GRANT CONNECT ON DATABASE {db} TO {role}",
+        "GRANT USAGE ON SCHEMA public TO {role}",
+        *grants,
+    ):
+        conn.execute(sql.SQL(stmt).format(role=role, db=db))
+
+
+READER_GRANTS = (
+    "ALTER ROLE {role} SET default_transaction_read_only = on",
+    "ALTER ROLE {role} SET statement_timeout = '5s'",
+    "GRANT SELECT ON run_history TO {role}",
+)
+WORKER_GRANTS = (
+    "GRANT SELECT, INSERT, UPDATE ON agent_runs TO {role}",
+    "GRANT SELECT ON policy_chunks TO {role}",
+    f"GRANT SELECT, INSERT, UPDATE ON {CHECKPOINT_TABLES} TO {{role}}",
+)
+DASHBOARD_GRANTS = (
+    "ALTER ROLE {role} SET default_transaction_read_only = on",
+    "ALTER ROLE {role} SET statement_timeout = '5s'",
+    "GRANT SELECT ON agent_runs TO {role}",
+    f"GRANT SELECT ON {CHECKPOINT_TABLES} TO {{role}}",
+)
+
+
+def setup(conninfo: str, reader_password: str, worker_password="", dashboard_password="") -> None:
+    """Create the tables and view, and a login role for each piece that gets a password."""
     with psycopg.connect(conninfo, autocommit=True) as conn:
         conn.execute(SCHEMA)
-        role = sql.Identifier(READER_ROLE)
-        exists = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [READER_ROLE]).fetchone()
-        if not exists:
-            conn.execute(sql.SQL("CREATE ROLE {} LOGIN").format(role))
-        conn.execute(
-            sql.SQL("ALTER ROLE {} PASSWORD {}").format(role, sql.Literal(reader_password))
-        )
-        db = sql.Identifier(conn.info.dbname)
-        for stmt in (
-            "ALTER ROLE {role} SET default_transaction_read_only = on",
-            "ALTER ROLE {role} SET statement_timeout = '5s'",
-            "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM {role}",
-            "REVOKE CREATE ON SCHEMA public FROM {role}",
-            "GRANT CONNECT ON DATABASE {db} TO {role}",
-            "GRANT USAGE ON SCHEMA public TO {role}",
-            "GRANT SELECT ON run_history TO {role}",
-        ):
-            conn.execute(sql.SQL(stmt).format(role=role, db=db))
+        login_role(conn, READER_ROLE, reader_password, READER_GRANTS)
+        if worker_password:
+            login_role(conn, WORKER_ROLE, worker_password, WORKER_GRANTS)
+        if dashboard_password:
+            login_role(conn, DASHBOARD_ROLE, dashboard_password, DASHBOARD_GRANTS)
 
 
 def reader_url() -> str:
@@ -197,7 +226,12 @@ if __name__ == "__main__":
     p.add_argument("files", nargs="+", type=Path)
     args = parser.parse_args()
     if args.command == "setup":
-        setup(db_url(), os.environ["SQL_READER_PASSWORD"])
+        setup(
+            db_url(),
+            os.environ["SQL_READER_PASSWORD"],
+            os.getenv("WORKER_DB_PASSWORD", ""),
+            os.getenv("DASHBOARD_DB_PASSWORD", ""),
+        )
         print(f"run history tables ready; role {READER_ROLE} can read run_history only")
     else:
         print(f"loaded {load(db_url(), args.files)} runs")

@@ -18,3 +18,7 @@ infra/aws/.build/
 
 # Local Helm values with secrets
 deploy/helm/values.local.yaml
+
+# Dashboard build
+dashboard/web/node_modules/
+dashboard/web/dist/

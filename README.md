@@ -17,7 +17,7 @@ uv run python -m retrieval.ingest   # embed the policy docs into Postgres (downl
 ## Run
 
 ```bash
-uv run uvicorn mock_api.app:app --port 8000          # mock internal API, in its own terminal
+uv run uvicorn mock_api.app:app --port 8000 --env-file .env   # mock internal API, in its own terminal
 uv run python -m agent.run REQ-002 REQ-024           # run dev-set requests end to end
 uv run python -m agent.run --resume RUN_ID --decision approve --by owner   # resume a paused run
 ```
@@ -78,6 +78,15 @@ Workers run from `docker/worker.Dockerfile` with the Helm chart in `deploy/helm/
 scales them on work queue depth, from 0 to 5. A 40-request burst went 0 to 5 and back to 0 on kind
 and on EKS: see `results/2026-11-04_kind_scaling.json` and `results/2026-11-04_eks_scaling.json`.
 Steps are in [docs/runbook.md](docs/runbook.md).
+
+## Dashboard and security
+
+`dashboard/` has the React + TypeScript app and its API: a request queue, a trace of each run, and
+an approve, edit or reject screen. Sign in with a viewer or approver token. Each piece of the system
+has its own scoped tokens, database role and IAM role: see [docs/security.md](docs/security.md).
+`scripts/injection_test.py` attacks the running system: 24 attack requests got no forbidden action
+through, and a real paused run was approved in the UI and resumed. See
+`results/2026-11-04_injection.json` and `results/2026-11-04_approval_ui.json`.
 
 ## How it works
 

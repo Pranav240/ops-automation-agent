@@ -25,7 +25,10 @@ spec:
             - configMapRef:
                 name: ops-agent-config
             - secretRef:
-                name: ops-agent-secrets
+                name: ops-agent-worker-secrets
+          env:
+            - name: POSTGRES_USER
+              value: ops_worker
           # The worker has no port. It touches this file on every poll.
           startupProbe:
             exec:

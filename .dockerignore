@@ -5,4 +5,7 @@
 !integrations/
 !retrieval/
 !mock_api/
+!dashboard/
 **/__pycache__
+dashboard/web/node_modules
+dashboard/web/dist
