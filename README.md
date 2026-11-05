@@ -122,8 +122,8 @@ Details: `results/2026-11-04_owner_trial.json`.
 - After the fixes, one dev run scored 68 of 72 correct, 0 wrong. That is not distinguishable from
   the frozen agent, -0.042 [-0.097, 0.000]. Escalation precision fell to 0.88, because held replies
   count as sent to a human. See `results/2026-11-04_dev_agent_fixes_final.md`.
-- This is a portfolio system. It has not handled production traffic, and no outside user has
-  tried it.
+- This is a portfolio system. It has not handled production traffic. The only outside use is the
+  3-tester pilot above.
 
 ## Setup
 
