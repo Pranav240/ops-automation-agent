@@ -62,11 +62,32 @@ Files: `results/2026-11-04_test.md`, `results/2026-11-04_test_judge.md`,
 [docs/test_failures.md](docs/test_failures.md) lists all 37 requests that failed in any run, with
 causes. Choices and trade-offs are in [docs/decisions.md](docs/decisions.md).
 
+## Pilot
+
+3 friends of the owner each wrote a support message as an assigned fake customer. The owner raised
+the messages in Jira word for word and passed the replies back. No real customer data was used.
+Each tester knew it was a test and was told the order and the problem, so this is a small check,
+not real traffic.
+
+- 3 testers, 4 tickets, 0 errors. Sam's message was raised twice, because the first reply was
+  rejected.
+- Mean tester rating 4.33 of 5, from 3 replies (4, 5, 4). A rejected reply was never sent, so it
+  has no rating.
+- Actions executed: a $310 order cancellation, and a $720 lost-order refund after human approval.
+- 2 runs paused for a human, a path the owner trial never reached.
+- On IT-21 the reply claimed a $720 refund that the agent never proposed. The critic objected, the
+  gate held it, and the owner rejected it. See
+  [the incident note](docs/incidents/2026-11-05_pilot_reply_claimed_a_refund.md).
+- One request was not finished: the agent asked Zoe for an order number, and no follow-up was
+  raised.
+
+Cost: $0.0113 Claude API, $0 AWS. Details: `results/2026-11-05_pilot.json`.
+
 ## Owner trial
 
-No outside testers were available, so no pilot was run. Instead the owner sent 10 messy requests
-through Jira: typos, invented orders, wrong customers and items not on the order. This is weaker
-evidence than a pilot, because the owner also wrote the dataset.
+Before testers were found, the owner sent 10 messy requests through Jira: typos, invented orders,
+wrong customers and items not on the order. This is weaker evidence than a pilot, because the
+owner also wrote the dataset.
 
 - 10 requests, 0 errors, 1 action executed: the correct $45 partial refund on IT-4.
 - No request reached another customer's order, including a mistyped customer email that named a
@@ -84,6 +105,8 @@ Details: `results/2026-11-04_owner_trial.json`.
   inter-annotator agreement.
 - 60 test rows give wide intervals, about ±10 points near 0.8.
 - The world is small (41 orders, 27 policies) and the API is a mock.
+- The worker handles each Jira ticket once, so a customer's answer on the same ticket does not
+  reach the agent. A follow-up needs a new ticket, and the agent does not remember the first one.
 - Escalation recall has 12 positive rows, so one request moves it by 8 points.
 - Agent fault, held but not cured: a reply can claim an action that never ran. This was seen on
   REQ-049 and REQ-054 in 2 of 3 Haiku test runs, and the frozen gate let those replies through.
