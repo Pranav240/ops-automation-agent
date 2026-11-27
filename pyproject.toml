@@ -35,7 +35,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["agent*", "mock_api*", "evals*", "retrieval*", "integrations*", "dashboard*"]
+include = ["agent*", "mock_api*", "evals*", "retrieval*", "integrations*", "dashboard*", "api*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
