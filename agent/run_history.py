@@ -30,7 +30,7 @@ CHECKPOINT_TABLES = "checkpoints, checkpoint_writes, checkpoint_blobs"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS agent_runs (
     run_id text PRIMARY KEY,
-    source text NOT NULL,              -- jira | eval
+    source text NOT NULL,              -- jira | eval | api
     ticket_key text,
     request_id text,
     customer_email text,

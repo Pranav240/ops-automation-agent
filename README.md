@@ -212,6 +212,67 @@ has its own scoped tokens, database role and IAM role: see [docs/security.md](do
 through, and a real paused run was approved in the UI and resumed. See
 `results/2026-11-04_injection.json` and `results/2026-11-04_approval_ui.json`.
 
+## HTTP API
+
+`api/` lets another app, GovernedDesk, start runs over HTTP and show paused runs to its own human
+approver. It is a thin layer: runs go through the same `Worker`, graph, checkpoints and run history
+as the Jira path, so the agent is unchanged. Start it with `python -m api` (port 8100).
+
+- **One tenant only.** There is one mock world (the Brightcart shop and its mock API), so the API
+  accepts one `tenant_id`, set in `ALLOWED_TENANT_ID`; any other gets 403.
+- **Mock API.** Actions write to the mock internal API, not a real shop.
+- **Eval numbers are not re-run.** The results above describe `agent-frozen-v1`. This layer adds
+  no agent changes and was not evaluated on its own.
+
+| Endpoint | What it does |
+|---|---|
+| `POST /runs` | Body `{request_id, tenant_id, customer_email, text}`. Returns 202 `{run_id, status: "queued"}` and runs in the background. The same `request_id` again returns the same run |
+| `GET /runs/{run_id}` | `status` (queued, running, paused, committed, rejected, failed), `proposed_action`, `critic_notes`, `reason_for_pause`, `reply_text`, `executed`, `decided_by`, `cost_usd`, `error` |
+| `POST /runs/{run_id}/decision` | Body `{decision: approve\|edit\|reject, edited_action?: {action?, args}, decided_by, decision_id}`. Only for a paused run, else 409. The same `decision_id` again is accepted once. Resumes from the Postgres checkpoint, like `--resume` |
+| `GET /health` | No signature needed |
+
+`reply_text` is the draft while a run is paused and is empty after a reject or failure, so a
+rejected draft is never sent. An edit changes only the arguments, never the action or the order.
+
+**Webhooks.** On `paused`, `committed`, `rejected` and `failed` the API POSTs
+`{event_id, event_type, run_id, request_id, tenant_id, status, proposed_action, reason_for_pause,
+created_at}` to `WEBHOOK_URL`. Each event gets 3 tries with backoff, every try is logged, and a
+failed webhook never blocks or fails the run. Poll `GET /runs/{run_id}` if one is missed.
+
+**Signing.** Both directions carry `X-Timestamp` (Unix seconds) and
+`X-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<raw body>">`. A bad signature or a timestamp
+more than 5 minutes off gets 401. GET calls sign an empty body.
+
+**Env vars:** `ALLOWED_TENANT_ID`, `HTTP_API_HMAC_SECRET`, `WEBHOOK_URL`, plus what the worker
+needs (Postgres, mock API and LLM settings). The tables `api_runs` and `api_decisions` are created at
+startup. `decided_by` is written to `agent_runs.approved_by`.
+
+Examples, in bash with `HTTP_API_HMAC_SECRET` exported:
+
+```bash
+sig() { printf '%s.%s' "$1" "$2" | openssl dgst -sha256 -hmac "$HTTP_API_HMAC_SECRET" | sed 's/^.*= /sha256=/'; }
+API=http://127.0.0.1:8100
+
+curl -s $API/health
+
+BODY='{"request_id":"GD-1001","tenant_id":"brightcart","customer_email":"farid.haddad@example.com","text":"My espresso machine ORD-1011 arrived broken."}'
+TS=$(date +%s)
+curl -s -X POST $API/runs -H "Content-Type: application/json" \
+  -H "X-Timestamp: $TS" -H "X-Signature: $(sig $TS "$BODY")" -d "$BODY"
+
+RUN=<run_id from above>; TS=$(date +%s)
+curl -s $API/runs/$RUN -H "X-Timestamp: $TS" -H "X-Signature: $(sig $TS '')"
+
+BODY='{"decision":"approve","decided_by":"maria","decision_id":"GD-1001-d1"}'
+TS=$(date +%s)
+curl -s -X POST $API/runs/$RUN/decision -H "Content-Type: application/json" \
+  -H "X-Timestamp: $TS" -H "X-Signature: $(sig $TS "$BODY")" -d "$BODY"
+```
+
+Not handled yet: runs execute inside the API process, so a run that is queued or running when it
+stops is marked `failed` at the next start (with a webhook), even if its action had already run.
+Check `executed` and the mock API log in that case.
+
 ## How it works
 
 - `agent/graph.py`: LangGraph graph `planner -> retriever -> tool_agent -> critic -> approval_gate -> commit`, with a Postgres checkpointer so a paused run can be resumed from another process.
